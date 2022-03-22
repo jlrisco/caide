@@ -1,0 +1,13 @@
+target
+*.swp
+*.log
+output.txt
+# IntelliJ stuff
+.idea/
+xdevs.iml
+out/
+*.iml
+
+# Apache netbeans
+nb-configuration.xml
+nbactions.xml
