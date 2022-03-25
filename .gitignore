@@ -11,3 +11,8 @@ out/
 # Apache netbeans
 nb-configuration.xml
 nbactions.xml
+
+# Others
+.settings
+.classpath
+.project

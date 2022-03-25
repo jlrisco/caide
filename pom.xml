@@ -48,8 +48,21 @@
 		    </plugin>
         </plugins>
     </build> 
+    <repositories>
+      <!-- To download GITHUB releases as dependencies -->
+      <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+      </repository>
+    </repositories>
     <dependencies>
-    	<dependency>
+      <!-- ECO -->
+      <dependency>
+        <groupId>com.github.iscar-ucm</groupId>
+        <artifactId>xdevs</artifactId>
+        <version>java-v1.0.0</version>
+      </dependency>
+      <dependency>
     		<groupId>com.github.haifengl</groupId>
     		<artifactId>smile-core</artifactId>
     		<version>2.6.0</version>
