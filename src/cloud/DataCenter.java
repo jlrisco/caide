@@ -16,13 +16,13 @@ public class DataCenter extends Atomic {
     private static final Logger LOGGER = Logger.getLogger(DataCenter.class.getName());
 
     // PORTINIT
-    protected Port<Input> iInFogserver1 = new Port<>("iInFogserver1");
+    public Port<Input> iInFogserver1 = new Port<>("iInFogserver1");
     protected Input currentInputFogserver1 = null;
 
-    protected Port<Input> iInFogserver2 = new Port<>("iInFogserver2");
+    public Port<Input> iInFogserver2 = new Port<>("iInFogserver2");
     protected Input currentInputFogserver2 = null;
 
-    protected Port<Input> oOutDataCenter = new Port<>("oOutDataCenter");
+    public Port<Input> oOutDataCenter = new Port<>("oOutDataCenter");
     protected double processingTime;
     protected Input currentInput = null;
 

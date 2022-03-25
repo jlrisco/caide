@@ -15,7 +15,7 @@
  * along with Smile.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package xdevs.core.examples.efp;
+package backup;
 
 import java.awt.Color;
 import java.awt.GridLayout;
@@ -26,7 +26,6 @@ import javax.swing.JPanel;
 
 import smile.plot.swing.Canvas;
 import smile.interpolation.CubicSplineInterpolation1D;
-import smile.interpolation.KrigingInterpolation;
 import smile.interpolation.KrigingInterpolation1D;
 import smile.interpolation.LinearInterpolation;
 import smile.interpolation.RBFInterpolation1D;

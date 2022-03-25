@@ -11,11 +11,11 @@ import util.Input;
  */
 public class NodoVirtual extends Atomic {
     private static final Logger LOGGER = Logger.getLogger(NodoVirtual.class.getName());
-    protected Port<Input> iInFichero = new Port<>("iInFichero");
-    protected Port<Input> iInFisico = new Port<>("iInFisico");
-    protected Port<Input> iInDB = new Port<>("iInDB");
+    public Port<Input> iInFichero = new Port<>("iInFichero");
+    public Port<Input> iInFisico = new Port<>("iInFisico");
+    public Port<Input> iInDB = new Port<>("iInDB");
 
-    protected Port<Input> oOut = new Port<>("oOut");
+    public Port<Input> oOut = new Port<>("oOut");
     protected Input currentInput = null;
     protected double processingTime;
 

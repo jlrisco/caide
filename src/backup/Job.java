@@ -19,9 +19,9 @@
  * Contributors:
  *  - José Luis Risco Martín
  */
-package xdevs.core.examples.efp;
+package backup;
 
-import xdevs.core.modeling.Input;
+import util.Input;
 
 /**
  *

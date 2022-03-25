@@ -22,9 +22,9 @@ import java.io.IOException;
  */
 public class Ficheros extends Atomic {
     private static final Logger LOGGER = Logger.getLogger(Ficheros.class.getName());
-    protected Port<Input> iStart = new Port<>("iStart");
-    protected Port<Input> iStop = new Port<>("iStop");
-    protected Port<Input> oOut = new Port<>("oOut");
+    public Port<Input> iStart = new Port<>("iStart");
+    public Port<Input> iStop = new Port<>("iStop");
+    public Port<Input> oOut = new Port<>("oOut");
     protected double period;
     protected String path;
     protected ArrayList<Input> listaEntrada = new ArrayList<Input>();

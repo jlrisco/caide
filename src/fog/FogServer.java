@@ -46,34 +46,34 @@ public class FogServer extends Atomic {
     public static final String RBF = "RBF";
     public static final String SHEPARD = "Shepard";
 
-    protected Port<Input> iArrived = new Port<>("iArrived");
+    public Port<Input> iArrived = new Port<>("iArrived");
 
     // PORTINIT
-    protected Port<Input> iInNodovirtual1 = new Port<>("iInNodovirtual1");
+    public Port<Input> iInNodovirtual1 = new Port<>("iInNodovirtual1");
     protected Input currentInputNodovirtual1 = null;
 
-    protected Port<Input> iInNodovirtual2 = new Port<>("iInNodovirtual2");
+    public Port<Input> iInNodovirtual2 = new Port<>("iInNodovirtual2");
     protected Input currentInputNodovirtual2 = null;
 
-    protected Port<Input> iInNodovirtual3 = new Port<>("iInNodovirtual3");
+    public Port<Input> iInNodovirtual3 = new Port<>("iInNodovirtual3");
     protected Input currentInputNodovirtual3 = null;
 
-    protected Port<Input> iInNodovirtual4 = new Port<>("iInNodovirtual4");
+    public Port<Input> iInNodovirtual4 = new Port<>("iInNodovirtual4");
     protected Input currentInputNodovirtual4 = null;
 
-    protected Port<Input> iInNodovirtual5 = new Port<>("iInNodovirtual5");
+    public Port<Input> iInNodovirtual5 = new Port<>("iInNodovirtual5");
     protected Input currentInputNodovirtual5 = null;
 
-    protected Port<Input> iInNodovirtual6 = new Port<>("iInNodovirtual6");
+    public Port<Input> iInNodovirtual6 = new Port<>("iInNodovirtual6");
     protected Input currentInputNodovirtual6 = null;
 
-    protected Port<Input> iInNodovirtual7 = new Port<>("iInNodovirtual7");
+    public Port<Input> iInNodovirtual7 = new Port<>("iInNodovirtual7");
     protected Input currentInputNodovirtual7 = null;
 
-    protected Port<Input> iInNodovirtual8 = new Port<>("iInNodovirtual8");
+    public Port<Input> iInNodovirtual8 = new Port<>("iInNodovirtual8");
     protected Input currentInputNodovirtual8 = null;
 
-    protected Port<Input> oOut = new Port<>("oOut");
+    public Port<Input> oOut = new Port<>("oOut");
 
     protected double processingTime;
     protected ArrayList<Input> listaInputs = new ArrayList<Input>();

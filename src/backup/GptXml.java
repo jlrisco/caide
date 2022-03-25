@@ -19,7 +19,7 @@
  * Contributors:
  *  - José Luis Risco Martín
  */
-package xdevs.core.examples.efp;
+package backup;
 
 import java.io.File;
 import java.io.IOException;

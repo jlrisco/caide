@@ -15,7 +15,7 @@
  * along with Smile.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package xdevs.core.examples.efp;
+package backup;
 
 import java.awt.GridLayout;
 import javax.swing.JFrame;

@@ -19,7 +19,7 @@
  * Contributors:
  *  - José Luis Risco Martín
  */
-package xdevs.core.examples.efp;
+package backup;
 
 import java.util.logging.Level;
 
@@ -27,6 +27,8 @@ import xdevs.core.modeling.Coupled;
 import xdevs.core.modeling.Port;
 import xdevs.core.simulation.Coordinator;
 import xdevs.core.util.DevsLogger;
+
+import edge.NodoVirtual;
 
 /**
  *

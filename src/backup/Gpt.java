@@ -19,7 +19,7 @@
  * Contributors:
  *  - José Luis Risco Martín
  */
-package xdevs.core.examples.efp;
+package backup;
 
 import java.nio.file.Paths;
 import java.util.logging.Level;
@@ -28,6 +28,11 @@ import java.util.Arrays;
 import xdevs.core.modeling.Coupled;
 import xdevs.core.simulation.Coordinator;
 import xdevs.core.util.DevsLogger;
+
+import edge.Ficheros;
+import edge.NodoVirtual;
+import fog.FogServer;
+import cloud.DataCenter;
 
 /**
  *

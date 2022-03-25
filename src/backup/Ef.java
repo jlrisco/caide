@@ -19,12 +19,15 @@
  * Contributors:
  *  - José Luis Risco Martín
  */
-package xdevs.core.examples.efp;
+package backup;
 
 import java.util.Arrays;
 
 import xdevs.core.modeling.Coupled;
 import xdevs.core.modeling.Port;
+
+import edge.Ficheros;
+import fog.FogServer;
 
 /**
  *
