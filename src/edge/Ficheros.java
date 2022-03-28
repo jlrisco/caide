@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.logging.Logger;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 
@@ -12,6 +13,7 @@ import util.Input;
 import xdevs.core.modeling.Port;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 
@@ -22,7 +24,8 @@ public class Ficheros extends Atomic {
     protected ArrayList<String> files = new ArrayList<>();
     protected BufferedReader reader = null;
     protected int contadorFicheros = 0;
-    String line = null;
+    protected Input currentInput = null;
+    protected Input nexInput = null;
 
     public Ficheros(String name, String path, LocalDateTime start, LocalDateTime stop) {
         super(name);
@@ -34,7 +37,9 @@ public class Ficheros extends Atomic {
             }
             /*
               TODO: Se asume que los ficheros se organizarán en orden
-              por fecha, y que al menos hay un fichero.
+              por fecha, y que al menos hay un fichero. Esto
+              convendría mejorarlo, pero como vamos a incorporar el
+              formato H5, puede que no sea necesario.
              */
             Collections.sort(files);
         } catch (Exception e) {
@@ -44,7 +49,8 @@ public class Ficheros extends Atomic {
 
     @Override
     public void initialize() {
-        Input currentInput = null;
+        currentInput = null;
+        updateInputs();
         try {
             reader = new BufferedReader(new FileReader(files.get(contadorFicheros)));
             // TODO: Hay que encontrar el primer Input >= start
@@ -143,6 +149,41 @@ public class Ficheros extends Atomic {
     @Override
     public String toString() {
         return "Generator [iStart=" + iStart + ", iStop=" + iStop + ", oOut=" + oOut + ", period=" + period;
+    }
+
+    protected void updateInputs() {
+        if(currentInput == null) { // No se ha leído nunca la primera entrada.
+            currentInput = getNextInput();
+        }
+        nexInput = getNextInput();
+    }
+
+    protected Input getNextInput() {
+        Input input = null;
+        try {
+            // Se abre reader por primera vez:
+            if(reader==null && contadorFicheros<files.size()) {
+                reader = new BufferedReader(new FileReader(files.get(contadorFicheros++)));
+                reader.readLine(); // Nos saltamos la cabecera
+            }
+            if (reader==null) {
+                return null;
+            }
+            String line = reader.readLine();
+            if (line==null && contadorFicheros<files.size()) { // Hemos llegado al final del fichero
+                reader = new BufferedReader(new FileReader(files.get(contadorFicheros++)));
+                reader.readLine(); // Nos saltamos la cabecera
+                line = reader.readLine();
+            }
+            else {
+                return null;
+            }
+            input = Input.parse(name, line);
+            // TODO: Falta comprobar que no se ha sobrepasado el LocalDateTime "stop" ...
+        } catch (IOException | ParseException ee) {
+            LOGGER.severe(ee.getLocalizedMessage());
+        }
+        return input;
     }
 
     public Date parseDate(String sDate) throws Exception {
