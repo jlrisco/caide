@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.logging.Logger;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 
 import xdevs.core.modeling.Atomic;
 import util.Input;
@@ -14,69 +15,40 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 
-/**
- *
- * @author José Luis Risco Martín TODO: I must also modify this class, according
- *         to the source code implemented by Saurabh, a iStart input port must
- *         be added.
- */
 public class Ficheros extends Atomic {
     private static final Logger LOGGER = Logger.getLogger(Ficheros.class.getName());
-    public Port<Input> iStart = new Port<>("iStart");
-    public Port<Input> iStop = new Port<>("iStop");
     public Port<Input> oOut = new Port<>("oOut");
-    protected double period;
-    protected String path;
-    protected ArrayList<Input> listaEntrada = new ArrayList<Input>();
-    int contador = 0;
-    private String line;
-    private BufferedReader reader;
-    ArrayList<String> files = new ArrayList<String>();
-    private int contadorFicheros = 0;
-    long initialDate = 0;
-    long startDate = 0;
-    long endDate = 0;
-    long actualDate = 0;
-    Input inputToSend = null;
 
-    public Ficheros(String name, double period, String path, String startDate, String endDate) {
+    protected ArrayList<String> files = new ArrayList<>();
+    protected BufferedReader reader = null;
+    protected int contadorFicheros = 0;
+    String line = null;
+
+    public Ficheros(String name, String path, LocalDateTime start, LocalDateTime stop) {
         super(name);
-        super.addInPort(iStop);
-        super.addInPort(iStart);
         super.addOutPort(oOut);
-        this.period = period;
-        this.path = path;
-        if (startDate != null && endDate != null) {
-            try {
-                this.startDate = parseDate(startDate).getTime();
-                this.endDate = parseDate(endDate).getTime();
-            } catch (Exception e1) {
-                e1.printStackTrace();
-                LOGGER.severe(this.name
-                        + "- Exception parsing endDate and/or startDate. Format have to be yyyy-MM-dd HH:mm:ss");
-            }
-        }
-
         try {
-            // Recorrer ficheros de un directorio
-            final File folder = new File(path);
-            for (final File fileEntry : folder.listFiles()) {
+            File folder = new File(path);
+            for (File fileEntry : folder.listFiles()) {
                 files.add(fileEntry.getPath());
             }
+            /*
+              TODO: Se asume que los ficheros se organizarán en orden
+              por fecha, y que al menos hay un fichero.
+             */
             Collections.sort(files);
-            System.out.println("Sorted: " + files.toString());
         } catch (Exception e) {
-            e.printStackTrace();
-            LOGGER.warning(this.name + "- Exception getting files list");
+            LOGGER.severe(e.getLocalizedMessage());
         }
     }
 
     @Override
     public void initialize() {
-        LOGGER.info(this.name + ": Ficheros Initialize");
-        Input datosEntrada = null;
+        Input currentInput = null;
         try {
             reader = new BufferedReader(new FileReader(files.get(contadorFicheros)));
+            // TODO: Hay que encontrar el primer Input >= start
+            // Continuar aquí ...
             line = reader.readLine(); // Se salta la primera linea
             line = reader.readLine();
             if (line != null) {

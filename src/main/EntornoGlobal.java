@@ -1,7 +1,15 @@
 package main;
 
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import xdevs.core.modeling.Coupled;
 import xdevs.core.simulation.Coordinator;
@@ -14,15 +22,17 @@ import cloud.DataCenter;
 
 public class EntornoGlobal extends Coupled {
 
-    public EntornoGlobal(String name, double period, double observationTime) {
-        super(name);
+    private static final Logger LOGGER = Logger.getLogger(EntornoGlobal.class.getName());
 
-        String userDirectory = Paths.get("").toAbsolutePath().toString();
+    public EntornoGlobal(String name, LocalDateTime start, LocalDateTime stop) {
+        super(name);
 
         // FICHEROS
         // Ficheros ap1 = new Ficheros("ap1", period, userDirectory + "/data/ap1/",
         // null, null);
-        Ficheros ap1 = new Ficheros("ap1", period, userDirectory + "/data/test/", null, null);
+        // Abrir el fichero en 2010-03-20, desde las 07:30:00 hasta las 07:40:00, por ejemplo.
+        // El fichero estará en data/ap1/20100320_ap1.csv por ejemplo.
+        Ficheros ap1 = new Ficheros("ap1", "data/ap1", start, stop);
         super.addComponent(ap1);
         /*
          * Ficheros ap5 = new Ficheros("ap5", period, userDirectory + "/data/ap5/",
@@ -113,15 +123,23 @@ public class EntornoGlobal extends Coupled {
     }
 
     public static void main(String args[]) {
-
         DevsLogger.setup(Level.INFO);
-        EntornoGlobal eg = new EntornoGlobal("EG", 1, 200);
-        // CoordinatorParallel coordinator = new CoordinatorParallel(eg);
+        SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        LocalDateTime start = null;
+        LocalDateTime stop = null;
+        try {
+            Date startAux = fmt.parse("2010-03-20 07:00:00");
+            start = startAux.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+            Date stopAux = fmt.parse("2010-03-20 07:10:00");
+            stop = stopAux.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+        } catch (Exception ee) {
+            LOGGER.severe(ee.getLocalizedMessage());
+            return;
+        }
+        EntornoGlobal eg = new EntornoGlobal("EntornoGlobal", start, stop);
         Coordinator coordinator = new Coordinator(eg);
-        // RTCentralCoordinator coordinator = new RTCentralCoordinator(eg);
         coordinator.initialize();
         coordinator.simulate(Long.MAX_VALUE);
-
+        coordinator.exit();
     }
-
 }
