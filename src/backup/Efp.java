@@ -28,8 +28,6 @@ import xdevs.core.modeling.Port;
 import xdevs.core.simulation.Coordinator;
 import xdevs.core.util.DevsLogger;
 
-import edge.NodoVirtual;
-
 /**
  *
  * @author jlrisco
@@ -40,7 +38,7 @@ public class Efp extends Coupled {
 
     public Efp(String name, double generatorPeriod, double processorPeriod, double transducerPeriod) {
         super(name);
-        super.addInPort(iStart);
+        /*        super.addInPort(iStart);
 
         Ef ef = new Ef("ef", generatorPeriod, transducerPeriod);
         super.addComponent(ef);
@@ -48,8 +46,8 @@ public class Efp extends Coupled {
         super.addComponent(processor);
 
         super.addCoupling(ef.oOut, processor.iInFichero);
-        super.addCoupling(processor.oOut, ef.iIn);
-        super.addCoupling(this.iStart, ef.iStart);
+        super.addCoupling(processor.out, ef.iIn);
+        super.addCoupling(this.iStart, ef.iStart);*/
     }
 
     public static void main(String args[]) {

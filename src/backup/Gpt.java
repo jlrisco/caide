@@ -22,17 +22,15 @@
 package backup;
 
 import java.nio.file.Paths;
-import java.util.logging.Level;
 import java.util.Arrays;
+import java.util.logging.Level;
 
+import cloud.DataCenter;
+import edge.NodoVirtual;
+import fog.FogServer;
 import xdevs.core.modeling.Coupled;
 import xdevs.core.simulation.Coordinator;
 import xdevs.core.util.DevsLogger;
-
-import edge.Ficheros;
-import edge.NodoVirtual;
-import fog.FogServer;
-import cloud.DataCenter;
 
 /**
  *
@@ -42,11 +40,11 @@ public class Gpt extends Coupled {
 
     public Gpt(String name, double period, double observationTime) {
     	super(name);
-        
-		String userDirectory = Paths.get("")
-		        .toAbsolutePath()
-		        .toString();
-		
+        /*
+        String userDirectory = Paths.get("")
+            .toAbsolutePath()
+            .toString();
+	
 // ANSIBLE FICHEROS
 Ficheros ap1 = new Ficheros("ap1", period, userDirectory + "/data/ap1/", null, null);
 super.addComponent(ap1);
@@ -125,22 +123,22 @@ super.addCoupling(dh1.oOut, nodoVirtual5.iInFichero);
 super.addCoupling(dh2.oOut, nodoVirtual6.iInFichero);
 super.addCoupling(dh3.oOut, nodoVirtual7.iInFichero);
 super.addCoupling(dh4.oOut, nodoVirtual8.iInFichero);
-super.addCoupling(nodoVirtual1.oOut, fogserver1.iInNodovirtual1);
-super.addCoupling(nodoVirtual2.oOut, fogserver1.iInNodovirtual2);
-super.addCoupling(nodoVirtual3.oOut, fogserver1.iInNodovirtual3);
-super.addCoupling(nodoVirtual4.oOut, fogserver1.iInNodovirtual4);
-super.addCoupling(nodoVirtual5.oOut, fogserver2.iInNodovirtual5);
-super.addCoupling(nodoVirtual6.oOut, fogserver2.iInNodovirtual6);
-super.addCoupling(nodoVirtual7.oOut, fogserver2.iInNodovirtual7);
-super.addCoupling(nodoVirtual8.oOut, fogserver2.iInNodovirtual8);
+super.addCoupling(nodoVirtual1.out, fogserver1.iInNodovirtual1);
+super.addCoupling(nodoVirtual2.out, fogserver1.iInNodovirtual2);
+super.addCoupling(nodoVirtual3.out, fogserver1.iInNodovirtual3);
+super.addCoupling(nodoVirtual4.out, fogserver1.iInNodovirtual4);
+super.addCoupling(nodoVirtual5.out, fogserver2.iInNodovirtual5);
+super.addCoupling(nodoVirtual6.out, fogserver2.iInNodovirtual6);
+super.addCoupling(nodoVirtual7.out, fogserver2.iInNodovirtual7);
+super.addCoupling(nodoVirtual8.out, fogserver2.iInNodovirtual8);
 super.addCoupling(fogserver1.oOut, dataCenter.iInFogserver1);
 super.addCoupling(fogserver2.oOut, dataCenter.iInFogserver2);
         
-        
+        */
     }
 
     public static void main(String args[]) {
-    	
+    	/*
         DevsLogger.setup(Level.INFO);
         Gpt gpt = new Gpt("gpt", 1, 200);
         //CoordinatorParallel coordinator = new CoordinatorParallel(gpt);
@@ -148,7 +146,7 @@ super.addCoupling(fogserver2.oOut, dataCenter.iInFogserver2);
         //RTCentralCoordinator coordinator = new RTCentralCoordinator(gpt);
         coordinator.initialize();
         coordinator.simulate(Long.MAX_VALUE);
-
+        */
     }
 
 }

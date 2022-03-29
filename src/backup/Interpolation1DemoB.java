@@ -19,19 +19,17 @@ package backup;
 
 import java.awt.Color;
 import java.awt.GridLayout;
-import java.util.Arrays;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
-import smile.plot.swing.Canvas;
 import smile.interpolation.CubicSplineInterpolation1D;
-import smile.interpolation.KrigingInterpolation;
 import smile.interpolation.KrigingInterpolation1D;
 import smile.interpolation.LinearInterpolation;
 import smile.interpolation.RBFInterpolation1D;
 import smile.interpolation.ShepardInterpolation1D;
 import smile.math.rbf.GaussianRadialBasis;
+import smile.plot.swing.Canvas;
 import smile.plot.swing.LinePlot;
 import smile.plot.swing.ScatterPlot;
 

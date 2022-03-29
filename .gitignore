@@ -16,3 +16,5 @@ nbactions.xml
 .settings
 .classpath
 .project
+logger.*
+data/output/*

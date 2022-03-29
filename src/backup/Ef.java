@@ -26,7 +26,6 @@ import java.util.Arrays;
 import xdevs.core.modeling.Coupled;
 import xdevs.core.modeling.Port;
 
-import edge.Ficheros;
 import fog.FogServer;
 
 /**
@@ -41,6 +40,7 @@ public class Ef extends Coupled {
 
   public Ef(String name, double period, double observationTime) {
 	  super(name);
+          /*
     super.addInPort(iIn);
     super.addInPort(iStart);
     super.addOutPort(oOut);
@@ -53,6 +53,6 @@ public class Ef extends Coupled {
     super.addCoupling(generator.oOut, this.oOut);
     super.addCoupling(generator.oOut, transducer.iArrived);
     super.addCoupling(transducer.oOut, generator.iStop);
-    super.addCoupling(this.iStart, generator.iStart);
+    super.addCoupling(this.iStart, generator.iStart);*/
   }
 }
