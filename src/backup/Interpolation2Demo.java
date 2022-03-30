@@ -17,15 +17,7 @@
 
 package backup;
 
-import java.awt.GridLayout;
-import javax.swing.JFrame;
 import javax.swing.JPanel;
-import smile.interpolation.BicubicInterpolation;
-import smile.interpolation.BilinearInterpolation;
-import smile.interpolation.CubicSplineInterpolation2D;
-import smile.plot.swing.Heatmap;
-import smile.plot.swing.Palette;
-import smile.plot.swing.Canvas;
 
 /**
  *
@@ -33,6 +25,7 @@ import smile.plot.swing.Canvas;
  */
 @SuppressWarnings("serial")
 public class Interpolation2Demo extends JPanel {
+    /*
     public Interpolation2Demo() {
         super(new GridLayout(2,2));
 
@@ -99,5 +92,5 @@ public class Interpolation2Demo extends JPanel {
         frame.setLocationRelativeTo(null);
         frame.getContentPane().add(new Interpolation2Demo());
         frame.setVisible(true);
-    }
+        }*/
 }

@@ -30,10 +30,12 @@ public class NodoVirtual extends Atomic {
     public NodoVirtual(String name, LocalDateTime start, LocalDateTime stop) {
         super(name);
         super.addOutPort(out);
+        String borrar = System.getProperty("user.dir");
+        System.out.println(borrar);
         this.start = start;
         this.stop = stop;
         try {
-            File folder = new File("data" + File.separator + "input" + File.separator + name);
+            File folder = new File("." + File.separator + "data" + File.separator + "input" + File.separator + name);
             for (File fileEntry : folder.listFiles()) {
                 files.add(fileEntry.getPath());
             }
@@ -85,11 +87,12 @@ public class NodoVirtual extends Atomic {
 
     @Override
     public void lambda() {
+        LOGGER.info(NodoVirtual.class.getName() + " sends: " + currentInput.toString());
         out.addValue(currentInput);
     }
 
     private void updateInputs() {
-        while (currentInput == null || currentInput.getDate().isBefore(stop)) { // No se ha leído nunca la primera entrada.
+        while (currentInput == null || currentInput.getDate().isBefore(start)) { // No se ha leído nunca la primera entrada.
             currentInput = getNextInput();
         }
         nextInput = getNextInput();
@@ -99,24 +102,28 @@ public class NodoVirtual extends Atomic {
         Input input = null;
         try {
             // Se abre reader por primera vez:
-            if(reader==null && contadorFicheros<files.size()) {
-                reader = new BufferedReader(new FileReader(files.get(contadorFicheros++)));
-                reader.readLine(); // Nos saltamos la cabecera
-            }
-            if (reader==null) {
-                return null;
+            if(reader==null) {
+                if (contadorFicheros < files.size()) {
+                    reader = new BufferedReader(new FileReader(files.get(contadorFicheros++)));
+                    reader.readLine(); // Nos saltamos la cabecera
+                }
+                else { // No quedan ficheros
+                    return null;
+                }
             }
             String line = reader.readLine();
-            if (line==null && contadorFicheros<files.size()) { // Hemos llegado al final del fichero
-                reader = new BufferedReader(new FileReader(files.get(contadorFicheros++)));
-                reader.readLine(); // Nos saltamos la cabecera
-                line = reader.readLine();
-            }
-            else {
-                return null;
+            if (line==null) { // Hemos llegado al final del fichero
+                if (contadorFicheros < files.size()) {
+                    reader = new BufferedReader(new FileReader(files.get(contadorFicheros++)));
+                    reader.readLine(); // Nos saltamos la cabecera
+                    line = reader.readLine();
+                }
+                else { // No quedan ficheros
+                    return null;
+                }
             }
             input = Input.parse(name, line);
-            if (input.getDate().isAfter(stop)) {
+            if (input.getDate().isAfter(stop)) { // No quedan más datos en el intervalo de simulación.
                 return null;
             }
         } catch (IOException | ParseException ee) {

@@ -1,11 +1,7 @@
 package backup;
 
-import java.util.ArrayList; // import the ArrayList class
-import java.util.Collections;
-import Jama.Matrix;
-
 public class Kriging {
-	
+    /*
 	static ArrayList<Double> x_list = new ArrayList<Double>(); // Create an ArrayList object
 	static ArrayList<Double> y_list = new ArrayList<Double>(); // Create an ArrayList object
 	static ArrayList<Double> valores = new ArrayList<Double>(); // Create an ArrayList object
@@ -134,5 +130,5 @@ public class Kriging {
 	}
 
 	
-	
+    */
 }

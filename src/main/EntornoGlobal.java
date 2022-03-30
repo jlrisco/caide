@@ -1,23 +1,18 @@
 package main;
 
-import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import cloud.DataCenter;
+import edge.NodoVirtual;
+import fog.FogServer;
 import xdevs.core.modeling.Coupled;
 import xdevs.core.simulation.Coordinator;
 import xdevs.core.util.DevsLogger;
-
-import edge.NodoVirtual;
-import fog.FogServer;
-import cloud.DataCenter;
 
 public class EntornoGlobal extends Coupled {
 
@@ -47,9 +42,9 @@ public class EntornoGlobal extends Coupled {
         LocalDateTime start = null;
         LocalDateTime stop = null;
         try {
-            Date startAux = fmt.parse("2010-03-20 07:00:00");
+            Date startAux = fmt.parse("2010-03-20 07:35:00");
             start = startAux.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
-            Date stopAux = fmt.parse("2010-03-20 07:10:00");
+            Date stopAux = fmt.parse("2010-03-21 07:40:00");
             stop = stopAux.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
         } catch (Exception ee) {
             LOGGER.severe(ee.getLocalizedMessage());

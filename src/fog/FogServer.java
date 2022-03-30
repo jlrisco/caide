@@ -21,10 +21,8 @@
  */
 package fog;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.logging.Logger;
 
 import util.Input;
@@ -75,10 +73,12 @@ public class FogServer extends Atomic {
         if (!in01.isEmpty()) {
             queue.get(out.getName()).add(in01.getSingleValue());
         }
+        super.activate();
     }
 
     @Override
     public void lambda() {
+        LOGGER.info(FogServer.class.getName() + " sends: " + queue.get(out.getName()).toString());
         out.addValues(queue.get(out.getName()));
     }
 }

@@ -17,29 +17,14 @@
 
 package backup;
 
-import java.awt.Color;
-import java.awt.GridLayout;
-import java.util.Arrays;
-
-import javax.swing.JFrame;
 import javax.swing.JPanel;
-
-import smile.plot.swing.Canvas;
-import smile.interpolation.CubicSplineInterpolation1D;
-import smile.interpolation.KrigingInterpolation1D;
-import smile.interpolation.LinearInterpolation;
-import smile.interpolation.RBFInterpolation1D;
-import smile.interpolation.ShepardInterpolation1D;
-import smile.math.rbf.GaussianRadialBasis;
-import smile.plot.swing.LinePlot;
-import smile.plot.swing.ScatterPlot;
 
 /**
 *
 * @author Haifeng Li
 */
 @SuppressWarnings("serial")
-public class Interpolation1Demo extends JPanel {
+public class Interpolation1Demo extends JPanel {/*
    public Interpolation1Demo() {
        super(new GridLayout(2,3));
        setBackground(Color.WHITE);
@@ -140,5 +125,5 @@ public class Interpolation1Demo extends JPanel {
        frame.setLocationRelativeTo(null);
        frame.getContentPane().add(new Interpolation1Demo());
        frame.setVisible(true);
-   }
+       }*/
 }

@@ -17,28 +17,14 @@
 
 package backup;
 
-import java.awt.Color;
-import java.awt.GridLayout;
-
-import javax.swing.JFrame;
 import javax.swing.JPanel;
-
-import smile.interpolation.CubicSplineInterpolation1D;
-import smile.interpolation.KrigingInterpolation1D;
-import smile.interpolation.LinearInterpolation;
-import smile.interpolation.RBFInterpolation1D;
-import smile.interpolation.ShepardInterpolation1D;
-import smile.math.rbf.GaussianRadialBasis;
-import smile.plot.swing.Canvas;
-import smile.plot.swing.LinePlot;
-import smile.plot.swing.ScatterPlot;
 
 /**
  *
  * @author Haifeng Li
  */
 @SuppressWarnings("serial")
-public class Interpolation1DemoB extends JPanel {
+public class Interpolation1DemoB extends JPanel {/*
     public Interpolation1DemoB() {
         super(new GridLayout(2,3));
         setBackground(Color.WHITE);
@@ -684,25 +670,6 @@ public class Interpolation1DemoB extends JPanel {
         //double[] y = {170.752, 418.825, 651.004, 834.702, 941.071, 712.118, 1037.16 };
         
         
-        /*
-        double[][] real = new double[real_x.length][2];
-        for (int i = 0; i < real.length; i++) {
-            real[i][0] = real_x[i];
-            real[i][1] = real_y[i];
-        }
-        */
-        /*
-        Canvas canvas = ScatterPlot.of(real, '@').canvas();
-        canvas.setTitle("Real");
-        LinearInterpolation linear = new LinearInterpolation(real_x, real_y);
-        double[][] real_yy = new double[201][2];
-        for (int i = 0; i <= 200; i++) {
-            real_yy[i][0] = i * 0.1;
-            real_yy[i][1] = linear.interpolate(real_yy[i][0]);
-        }
-        canvas.add(LinePlot.of(real_yy, Color.RED));
-        add(canvas.panel());
-        */
         
         double[][] controls = new double[x.length][2];
         for (int i = 0; i < controls.length; i++) {
@@ -710,22 +677,6 @@ public class Interpolation1DemoB extends JPanel {
             controls[i][1] = y[i];
         }
         System.out.println(controls.length);
-        
-        /*
-        Canvas canvas = ScatterPlot.of(controls, '@').canvas();
-        canvas.setTitle("Linear");
-        LinearInterpolation linear = new LinearInterpolation(x, y);
-        double[][] yy = new double[101][2];
-        for (int i = 0; i <= 100; i++) {
-            yy[i][0] = i * 0.1;
-            yy[i][1] = linear.interpolate(yy[i][0]);
-        }
-        canvas.add(LinePlot.of(yy, Color.RED));
-        add(canvas.panel());
-        
-        System.out.println(Arrays.deepToString(yy));
-       */ 
-        
         
         
         
@@ -788,5 +739,5 @@ public class Interpolation1DemoB extends JPanel {
         frame.setLocationRelativeTo(null);
         frame.getContentPane().add(new Interpolation1DemoB());
         frame.setVisible(true);
-    }
+    }*/
 }
