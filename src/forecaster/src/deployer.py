@@ -15,7 +15,7 @@ class Deployer():
     Class that encapsulates the model deployer.
     '''
 
-    def __init__(self, work_path='.', time_gran='01m', #dset='stand_map10',
+    def __init__(self, work_path='..', time_gran='01m', #dset='stand_map10',
                  site='oahu', kind='10x10', scaling='stand', interp='nearest', group='/gases',
                  n_x=4, forecast_horizon=[1, 11, 31, 61],
                  #batch_size=2**5, batch_size_stateful=2**5, timestep=10, # for time awareness
@@ -45,7 +45,7 @@ class Deployer():
         self.initial_dt = dt.datetime(year=2010, month=3, day=18)
         with tb.open_file(self.dataset_path, mode='r') as h5_file:
             self.sensors = eval(h5_file.get_node('/2010/04/15')._v_attrs['columns'])[1:]
-        self.models = modelUtils.Models(n_x=self.n_x, 
+        self.models = modelUtils.Models(n_x=self.n_x,
                                         n_horizons=len(self.forecast_horizon),
                                         n_sensors=len(self.sensors))
         self.mod_name = '{}_{}_{}_{}_nx{:02}_{}'.format(time_gran, kind, scaling, interp, n_x, 'convLstm0')
@@ -70,8 +70,17 @@ class Deployer():
         model.summary()
         return model
 
-    def forecast(self, start_idx=0):
-        pass
+    def forecast(self, now):
+        # It is assumed that now is a datetime
+        # base should be the same day at the first recorded time
+        id_now = self.__datetime_to_idx(now, base=now.date())
+        # 1) Read 1d data for each sensor at current time (consider that 1st column is time_since_epoch)
+        # 2) Standardize
+        # 3) Interpolate to mesh-grid (and probably save it to a h5)
+        # 4) Forecast using the new mesh-grid alongside the previous n_x - 1
+        # 5) De-interpolate to obtain one value per sensor
+        # 6) De-standardize
+        # 7) Save result in ../data/oahu/forecasts (same structure as the input?)
 
 if __name__ == "__main__":
     d = Deployer()
