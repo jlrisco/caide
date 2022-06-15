@@ -6,36 +6,59 @@ from scipy.interpolate import griddata
 import datetime as dt
 import warnings
 import modelUtils
+import argparse
 
 class Deployer():
     '''
     Class that encapsulates the model deployer.
+    Relevant parameters:
+        work_path: root directory in which 'data' and 'models' directories must exist.
+        dataset: name of the input dataset (h5 extension).
+        server: name of the server that runs this code (eg FogServer01)
+        first_hour/last_hour: first/last hour of expected data for the input
+    The forecast method:
+        Takes as input the 'now' parameter, a dt.datetime object that carries the date and hour of 
+        the desired forecast time. It generates a h5 file in the predictions directory (if it does not exist),
+        and adds a node to the file with the n_y predictions.
+    Additional parameters are left in the code for testing and future work purposes.
+
+    IMPORTANT:
+        The following directory structure is needed for a proper deployment of the model (this structure may be changed in the future):
+        
+        |work_path
+            |data
+                |input
+                    |input_file.h5
+                |predictions
+            |models
+                |model_name
+                    |model_name.h5
     '''
     
-    def __init__(self, work_path='../..', time_gran='01m', #dset='stand_map10',
-                 site='oahu', server='FogServer01', kind='10x10', offset=0.001, scaling='stand', interp='nearest', 
+    def __init__(self, work_path='..', time_gran='01m', #dset='stand_map10',
+                 dataset='example.h5', server='FogServer01', kind='10x10', offset=0.001, scaling='stand', interp='nearest', 
                  n_x=10, forecast_horizon=[1, 11, 31, 61], first_hour = '07:30:00', last_hour='17:30:00',
                  mod_name = 'stand_map10_ts10_convLstm0', testing = False                
                 ):
         # For files and paths
         self.work_path = work_path
         self.time_gran = time_gran
-        self.models_path = os.path.join(self.work_path, 'models', site)
+        self.models_path = os.path.join(self.work_path, 'models')
         self.mod_name = mod_name
-        self.data_path = os.path.join(self.work_path, 'data', site, 'clean')
-        self.other_path = os.path.join(self.work_path, 'data', site, 'other')
-        self.dataset = 'example.h5'
+        self.data_path = os.path.join(self.work_path, 'data', 'input')
+        # self.other_path = os.path.join(self.work_path, 'data', site, 'other')
+        self.dataset = dataset
         self.dataset_path = os.path.join(self.data_path, self.dataset)
-        self.dataset_raw = '{}_{}_{}.h5'.format(time_gran, 'flat', 'raw')
-        self.dataset_raw_path = os.path.join(self.data_path, self.dataset_raw)
+        # self.dataset_raw = '{}_{}_{}.h5'.format(time_gran, 'flat', 'raw')
+        # self.dataset_raw_path = os.path.join(self.data_path, self.dataset_raw)
         self.dataset_maps = 'dataset_maps.h5'
         self.dataset_maps_path = os.path.join(self.data_path, self.dataset_maps)
-        self.predict_path = os.path.join(self.work_path, 'data', site, 'predictions')
+        self.predict_path = os.path.join(self.work_path, 'data', 'predictions')
         self.output = 'predictions.h5'
         self.output_path = os.path.join(self.predict_path, self.output)
         #self.experiment = experiment
         self.server = server
-        self.site, self.kind, self.scaling, self.interp = site, kind, scaling, interp
+        self.kind, self.scaling, self.interp = kind, scaling, interp
         # For the model
         self.n_x = n_x
         self.offset = offset
@@ -68,7 +91,7 @@ class Deployer():
         # Frequency expressed in minutes
         if base is None:
             base = self.initial_dt
-        return base + dt.timedelta(minutes=freq * idx)
+        return base + dt.timedelta(hours=self.first_hour.hour, minutes=(freq * idx +self.first_hour.minute))
 
     def __datetime_to_idx(self, date, base=None, freq=1):
         # Frequency expressed in minutes
@@ -185,7 +208,7 @@ class Deployer():
             if return_data: return data, pred_data
             return grid, grid_pred
 
-        # 7) Save result in ../data/oahu/forecasts (same structure as the input?)
+        # 7) Save result in ../data/predictions (same structure as the input?)
         dtype = tb.Float32Atom()
         with tb.open_file(self.output_path, 'a') as h5_out,\
              warnings.catch_warnings() as w:
@@ -208,4 +231,21 @@ class Deployer():
         return self.dataset
 
 if __name__ == "__main__":
-    d = Deployer()
+    parser = argparse.ArgumentParser(description='Generate data predictions for the given timestamps.')
+    parser.add_argument('server', help='Server name in which the model is deployed (eg: FogServer01)')
+    parser.add_argument('input', help='Input data file (h5 extension)')
+    parser.add_argument('now', nargs=2, help='Timestamp from which predictions are made (format: yyyy/mm/day hh:mm)')
+    parser.add_argument('-n','--npreds', type=int,default=1 ,help='Number of successive predictions for the N minutes following \'now\'')
+    parser.add_argument('-wk','--work_path', default='..', help='Relative route to main directory')
+    parser.add_argument('-fh','--first_hour', default='07:30:00', help='First hour of input data (format: hh:mm:ss)')
+    parser.add_argument('-lh','--last_hour', default='17:30:00', help='Last hour of input data (format: hh:mm:ss)')
+    args = parser.parse_args()
+    now = pd.to_datetime(args.now[0]+' '+args.now[1])
+    # now = pd.to_datetime()
+
+    tic = time.time() 
+    d = Deployer(work_path=args.work_path, dataset=args.input, server=args.server, 
+                 first_hour=args.first_hour, last_hour=args.last_hour)
+    for i in range(args.npreds):
+        d.forecast(now=now+dt.timedelta(minutes=i))
+    print('Prediction successful! it took {} in total'.format(time.strftime('%H:%M:%S', time.gmtime(time.time() - tic))))
