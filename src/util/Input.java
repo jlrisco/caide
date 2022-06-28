@@ -6,18 +6,43 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
 
-public class Input {
+public class Input implements Comparable<Input>{
 
     protected String source;
     protected LocalDateTime date;
     protected Double radiacion;
+    protected String dataCenter;
+    protected String farm;
+    protected String sensor;
 
     public Input(String source, LocalDateTime date, Double radiacion) {
         this.source = source;
         this.date = date;
         this.radiacion = radiacion;
+        String[] args = (this.source).split("\\.");
+        if( args.length==3 ) {
+        	this.dataCenter = args[0];
+        	this.farm = args[1];
+        	this.sensor = args[2];
+        }else{
+        	this.dataCenter = "";
+        	this.farm = "";
+        	this.sensor = args[args.length-1];
+        }
     }
 
+    @Override
+    public int compareTo(Input i) {
+    	LocalDateTime d = i.getDate();
+    	if (this.date.isAfter(d)) {
+    		return 1;
+    	} else if (this.date.isBefore(d)) {
+    		return -1;
+    	} else {
+    		return 0;
+    	}
+    }
+    
     public static Input parse(String source, String line) throws ParseException {
         String[] parts = line.split(",");
         String[] dates = parts[0].split("-");
@@ -52,9 +77,34 @@ public class Input {
     public void setDate(LocalDateTime date) {
         this.date = date;
     }
+    
+    public String getDataCenter() {
+		return dataCenter;
+	}
 
-    @Override
-    public String toString() {
-        return "Input [source=" + source + ", date=" + date.toString() + ", radiaction=" + radiacion + "]";
-    }
+	public void setDataCenter(String dataCenter) {
+		this.dataCenter = dataCenter;
+	}
+
+	public String getFarm() {
+		return farm;
+	}
+
+	public void setFarm(String farm) {
+		this.farm = farm;
+	}
+
+	public String getSensor() {
+		return sensor;
+	}
+
+	public void setSensor(String sensor) {
+		this.sensor = sensor;
+	}
+
+	@Override
+	public String toString() {
+		return "Input [source=" + source + ", date=" + date + ", radiacion=" + radiacion + ", dataCenter=" + dataCenter
+				+ ", farm=" + farm + ", sensor=" + sensor + "]";
+	}
 }

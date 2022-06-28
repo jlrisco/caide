@@ -24,6 +24,12 @@
         <artifactId>xdevs</artifactId>
         <version>java-v1.0.0</version>
       </dependency>
+      <!-- MongoDB Driver JDBC -->
+      <dependency>
+	      <groupId>org.mongodb</groupId>
+	      <artifactId>mongo-java-driver</artifactId>
+	      <version>3.12.11</version>
+      </dependency>
       <!--
       <dependency>
     	<groupId>com.github.haifengl</groupId>
