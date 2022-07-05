@@ -158,7 +158,7 @@ class Deployer():
 
         return grid
    
-    def forecast(self, now, save_maps = False, return_data=False):
+    def forecast(self, now, save_maps = False, return_data=False, reps=1):
         tic = time.time()
         # It is assumed that now is a datetime
         # base should be the same day at the first recorded time
@@ -191,36 +191,38 @@ class Deployer():
         
         # 4) Forecast using the new mesh-grid alongside the previous n_x - 1
         model = self.load_model(mod_name = self.mod_name)
-        grid_pred = model.predict_on_batch(grid)
-        # return grid, predict
-
-        # 5) De-interpolate to obtain one value per sensor
-        grid_shape = list(map(int,self.kind.split(sep='x')))
-        grid_pred_ = grid_pred.reshape(len(self.forecast_horizon), grid_shape[0]*grid_shape[1])
-        pred_data = np.array([grid_pred_[:,self.pairs[sensor]] for sensor in self.sensors])
         
-        # 6) De-standardize
-        for idx,col in enumerate(self.columns[1:]):
-            pred_data[idx] = (pred_data[idx] * self.std_map[col]) + self.mean_map[col]
+        for rep in range(reps): 
+            grid_pred = model.predict_on_batch(grid)
+            # return grid, predict
 
-        # Testing
-        if self.testing:
-            if return_data: return data, pred_data
-            return grid, grid_pred
+            # 5) De-interpolate to obtain one value per sensor
+            grid_shape = list(map(int,self.kind.split(sep='x')))
+            grid_pred_ = grid_pred.reshape(len(self.forecast_horizon), grid_shape[0]*grid_shape[1])
+            pred_data = np.array([grid_pred_[:,self.pairs[sensor]] for sensor in self.sensors])
+            
+            # 6) De-standardize
+            for idx,col in enumerate(self.columns[1:]):
+                pred_data[idx] = (pred_data[idx] * self.std_map[col]) + self.mean_map[col]
 
-        # 7) Save result in ../data/predictions (same structure as the input?)
-        dtype = tb.Float32Atom()
-        with tb.open_file(self.output_path, 'a') as h5_out,\
-             warnings.catch_warnings() as w:
-            warnings.simplefilter('ignore', tb.NaturalNameWarning)
-            if 'DataCenter/{}/{:02}-{:02}-{:02}'.format(self.server,now.year,now.month,now.day) not in h5_out.root:
-                group = h5_out.create_group(where='/DataCenter/{}'.format(self.server),name='{:02}-{:02}-{:02}'.format(now.year,now.month,now.day),createparents=True)
-            else: group = '/DataCenter/{}/{:02}-{:02}-{:02}'.format(self.server,now.year,now.month,now.day)
-            time_stamp = '{:02}:{:02}:00'.format(now.hour,now.minute)
-            if time_stamp not in h5_out.root[str(group).split()[0]]:
-                h5_out.create_carray(where=group, name=time_stamp, atom=dtype, obj=pred_data)
-            h5_out.root.DataCenter[self.server]._v_attrs['columns'] = self.columns[1:]
-                   
+            # Testing
+            if self.testing:
+                if return_data: return data, pred_data
+                return grid, grid_pred
+
+            # 7) Save result in ../data/predictions (same structure as the input?)
+            dtype = tb.Float32Atom()
+            with tb.open_file(self.output_path, 'a') as h5_out,\
+                warnings.catch_warnings() as w:
+                warnings.simplefilter('ignore', tb.NaturalNameWarning)
+                if 'DataCenter/{}/{:02}-{:02}-{:02}'.format(self.server,now.year,now.month,now.day) not in h5_out.root:
+                    group = h5_out.create_group(where='/DataCenter/{}'.format(self.server),name='{:02}-{:02}-{:02}'.format(now.year,now.month,now.day),createparents=True)
+                else: group = '/DataCenter/{}/{:02}-{:02}-{:02}'.format(self.server,now.year,now.month,now.day)
+                time_stamp = '{:02}:{:02}:00'.format(now.hour,now.minute)
+                if time_stamp not in h5_out.root[str(group).split()[0]]:
+                    h5_out.create_carray(where=group, name=time_stamp, atom=dtype, obj=pred_data)
+                h5_out.root.DataCenter[self.server]._v_attrs['columns'] = self.columns[1:]
+                    
         return 'Prediction successful, it took {} in total'.format(time.strftime('%H:%M:%S', time.gmtime(time.time() - tic)))
     
     def set_input(self, x):
@@ -246,6 +248,5 @@ if __name__ == "__main__":
     tic = time.time() 
     d = Deployer(work_path=args.work_path, dataset=args.input, server=args.server, 
                  first_hour=args.first_hour, last_hour=args.last_hour)
-    for i in range(args.npreds):
-        d.forecast(now=now+dt.timedelta(minutes=i))
+    d.forecast(now=now, reps=args.npreds)
     print('Prediction successful! it took {} in total'.format(time.strftime('%H:%M:%S', time.gmtime(time.time() - tic))))
