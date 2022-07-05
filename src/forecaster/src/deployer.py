@@ -160,41 +160,35 @@ class Deployer():
    
     def forecast(self, now, save_maps = False, return_data=False, reps=1):
         tic = time.time()
+        model = self.load_model(mod_name = self.mod_name)
         # It is assumed that now is a datetime
         # base should be the same day at the first recorded time
-        id_now = self.__datetime_to_idx(now)
-        if id_now < self.n_x:
-            x = self.first_hour + dt.timedelta(minutes=self.n_x)
-            y = self.last_hour - dt.timedelta(minutes=self.forecast_horizon[-1])
-            print('Unable to forecast at times before {:02}:{:02} and after {:02}:{:02}'.format(x.hour,x.minute,y.hour,y.minute))
-            return
-        elif id_now > self.__datetime_to_idx(self.last_hour) - self.forecast_horizon[-1] :
-            x = self.first_hour + dt.timedelta(minutes=self.n_x)
-            y = self.last_hour - dt.timedelta(minutes=self.forecast_horizon[-1])
-            print('Unable to forecast at times before {:02}:{:02} and after {:02}:{:02}'.format(x.hour,x.minute,y.hour,y.minute))
-            return
-        # Not sure how to handle the shift
-
-        # 1) Read 1d data for each sensor at current time (consider that 1st column is time_since_epoch)
-        with tb.open_file(self.dataset_path, 'r') as h5_data:
-            data = h5_data.root.DataCenter[self.server]['{:02}-{:02}-{:02}'.format(now.year,now.month,now.day)][id_now - self.n_x:id_now, 1:]
-
-        # 2) Standardize
-        for idx,col in enumerate(self.columns[1:]):
-            data[...,idx] = (data[...,idx] - self.mean_map[col])/self.std_map[col]        
-            # print(np.nanmean(data[...,idx]),mean_map[col])
-            # print(np.nanstd(data[...,idx]),std_map[col])
-
-        # 3) Interpolate to mesh-grid (and probably save it to a h5)
-        grid = self.interpolate(data=data, now=now, save_maps=save_maps)
-        grid = grid.reshape(1,*grid.shape)
         
-        # 4) Forecast using the new mesh-grid alongside the previous n_x - 1
-        model = self.load_model(mod_name = self.mod_name)
-        
-        for rep in range(reps): 
+        for _ in range(reps):
+            id_now = self.__datetime_to_idx(now)
+            if id_now < self.n_x or id_now > self.__datetime_to_idx(self.last_hour) - self.forecast_horizon[-1]:
+                x = self.first_hour + dt.timedelta(minutes=self.n_x)
+                y = self.last_hour - dt.timedelta(minutes=self.forecast_horizon[-1])
+                print('Unable to forecast at times before {:02}:{:02} and after {:02}:{:02}'.format(x.hour,x.minute,y.hour,y.minute))
+                return
+            # Not sure how to handle the shift
+
+            # 1) Read 1d data for each sensor at current time (consider that 1st column is time_since_epoch)
+            with tb.open_file(self.dataset_path, 'r') as h5_data:
+                data = h5_data.root.DataCenter[self.server]['{:02}-{:02}-{:02}'.format(now.year,now.month,now.day)][id_now - self.n_x:id_now, 1:]
+
+            # 2) Standardize
+            for idx,col in enumerate(self.columns[1:]):
+                data[...,idx] = (data[...,idx] - self.mean_map[col])/self.std_map[col]        
+                # print(np.nanmean(data[...,idx]),mean_map[col])
+                # print(np.nanstd(data[...,idx]),std_map[col])
+
+            # 3) Interpolate to mesh-grid (and probably save it to a h5)
+            grid = self.interpolate(data=data, now=now, save_maps=save_maps)
+            grid = grid.reshape(1,*grid.shape)
+            
+            # 4) Forecast using the new mesh-grid alongside the previous n_x - 1    
             grid_pred = model.predict_on_batch(grid)
-            # return grid, predict
 
             # 5) De-interpolate to obtain one value per sensor
             grid_shape = list(map(int,self.kind.split(sep='x')))
@@ -222,6 +216,7 @@ class Deployer():
                 if time_stamp not in h5_out.root[str(group).split()[0]]:
                     h5_out.create_carray(where=group, name=time_stamp, atom=dtype, obj=pred_data)
                 h5_out.root.DataCenter[self.server]._v_attrs['columns'] = self.columns[1:]
+            now = now - dt.timedelta(minutes=1)
                     
         return 'Prediction successful, it took {} in total'.format(time.strftime('%H:%M:%S', time.gmtime(time.time() - tic)))
     
