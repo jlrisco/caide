@@ -30,12 +30,14 @@ public class NodoVirtual extends Atomic {
     public NodoVirtual(String name, LocalDateTime start, LocalDateTime stop) {
         super(name);
         super.addOutPort(out);
-        String borrar = System.getProperty("user.dir");
-        System.out.println(borrar);
+        //String borrar = System.getProperty("user.dir");
+        //System.out.println(borrar);
         this.start = start;
         this.stop = stop;
         try {
-            File folder = new File("." + File.separator + "data" + File.separator + "input" + File.separator + name);
+        	String[] nameParts = name.split("\\.");
+        	String nameDataFolder = "." + File.separator + "data" + File.separator + "input" + File.separator + "sensors_data" + File.separator + nameParts[nameParts.length-1];
+            File folder = new File(nameDataFolder);
             for (File fileEntry : folder.listFiles()) {
                 files.add(fileEntry.getPath());
             }
