@@ -3,11 +3,13 @@ import com.mongodb.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Indexes;
 
 import org.bson.Document;
 import org.bson.conversions.Bson;
 
 import java.util.LinkedList;
+import java.util.TimeZone;
 import java.util.logging.Logger;
 
 public class ManagerMongoDB {
@@ -74,6 +76,15 @@ public class ManagerMongoDB {
 			LOGGER.severe(e.getLocalizedMessage());
 		}
 	}
+
+	protected void updateDocument(String collectionName, Document search, Document value) {
+		try {
+			MongoCollection<Document> collection = this.mongoDB.getCollection(collectionName);
+			collection.updateOne(search, value);
+		} catch(Exception e) {
+			LOGGER.severe(e.getLocalizedMessage());
+		}
+	}
 	
 	protected LinkedList<Document> getDocuments(String collectionName, Document condition) {
 		LinkedList<Document> rows = new LinkedList<Document>();
@@ -101,5 +112,30 @@ public class ManagerMongoDB {
 			LOGGER.severe(e.getLocalizedMessage());
 		}
 		return rows;
+	}
+	
+	protected LinkedList<Document> getListIndexes(String collectionName) {
+		LinkedList<Document> rows = new LinkedList<Document>();
+		try {
+			MongoCollection<Document> collection = this.mongoDB.getCollection(collectionName);
+			for (Document index : collection.listIndexes()) {
+			    rows.add(index);
+			}			
+		}catch(Exception e){
+			LOGGER.severe(e.getLocalizedMessage());
+		}
+		return rows;
+	}
+	
+	protected boolean createIndex(String collectionName, String indexName) {
+		boolean successfulOperation = false;
+		try {
+			MongoCollection<Document> collection = this.mongoDB.getCollection(collectionName);
+			collection.createIndex(Indexes.ascending(indexName));
+			successfulOperation = true;
+		}catch(Exception e) {
+			LOGGER.severe(e.getLocalizedMessage());
+		}
+		return successfulOperation;
 	}
 }

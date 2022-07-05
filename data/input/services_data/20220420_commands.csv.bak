@@ -1,3 +1,0 @@
-request_datetime;command_request;initial_datetime;end_datetime;argument
-2010-03-20 07:30:03;cubicspline;2010-03-20 07:30:00;2010-03-20 07:30:02;DataCenter|FogServer01|ap1
-2010-03-20 07:30:04;h5;2010-03-20 07:30:00;2010-03-20 07:30:04;DataCenter|FogServer01|60

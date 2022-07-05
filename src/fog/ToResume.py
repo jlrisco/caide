@@ -207,7 +207,7 @@ if __name__ == "__main__":
     # Define menu options and call function that runs the menu
     interval = 60
     from_date_str = "2010-03-20T07:30:00+00:00"
-    to_date_str = "2010-03-25T17:29:59+00:00"
+    to_date_str = "2010-03-22T17:29:59+00:00"
     if len(sys.argv) > 3:
         largs = sys.argv
         interval = int(largs[1])

@@ -5,6 +5,7 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.Objects;
 
 public class Input implements Comparable<Input>{
 
@@ -107,4 +108,19 @@ public class Input implements Comparable<Input>{
 		return "Input [source=" + source + ", date=" + date + ", radiacion=" + radiacion + ", dataCenter=" + dataCenter
 				+ ", farm=" + farm + ", sensor=" + sensor + "]";
 	}
+	
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Input in = (Input) o;
+        return  source.equals(in.source) &&
+        		date.isEqual(in.getDate()) &&
+        		Double.compare(in.radiacion, radiacion) == 0;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(source, date, radiacion);
+    }
 }

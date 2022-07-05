@@ -33,10 +33,11 @@ public class Request implements Comparable<Request>{
         }else if( (	this.commandRequest.compareTo(CommandRequest.OUTLIER_CUBICSPLINE)==0 ||
         			this.commandRequest.compareTo(CommandRequest.OUTLIER_RBF)==0 ||
         			this.commandRequest.compareTo(CommandRequest.OUTLIER_SHEPARD)==0 ) && 
-        		 (args.length == 3) ) {
+        		 (args.length == 4) ) {
         	this.dataCenter = args[0];
         	this.farm = args[1];
         	this.sensor = args[2];
+        	this.seconds = Integer.parseInt(args[3]);
         }else {
         	this.dataCenter = "";
         	this.farm = "";

@@ -14,6 +14,7 @@ import fog.Service;
 import xdevs.core.modeling.Coupled;
 import xdevs.core.simulation.Coordinator;
 import xdevs.core.util.DevsLogger;
+import xdevs.core.simulation.parallel.CoordinatorParallel;
 
 public class EntornoGlobal extends Coupled {
 
@@ -45,7 +46,7 @@ public class EntornoGlobal extends Coupled {
         NodoVirtual ap4 = new NodoVirtual(nameAp4, start, stop);
         super.addComponent(ap4);
         
-        /*String nameAp5 = nameFogServer01+"."+"ap5";
+        String nameAp5 = nameFogServer01+"."+"ap5";
         NodoVirtual ap5 = new NodoVirtual(nameAp5, start, stop);
         super.addComponent(ap5);
         
@@ -100,9 +101,9 @@ public class EntornoGlobal extends Coupled {
         String nameDh11 = nameFogServer01+"."+"dh11";
         NodoVirtual dh11 = new NodoVirtual(nameDh11, start, stop);
         super.addComponent(dh11);
-        */
+        
         // SERVICE
-        Service s1 = new Service("20220420_commands.csv", start, stop);
+        Service s1 = new Service("20220704_commands.csv", start, stop);
         super.addComponent(s1);
         
         
@@ -113,7 +114,7 @@ public class EntornoGlobal extends Coupled {
         
         super.addCoupling(ap3.out, fogServer01.in01);
         super.addCoupling(ap4.out, fogServer01.in01);
-        /*super.addCoupling(ap5.out, fogServer01.in01);
+        super.addCoupling(ap5.out, fogServer01.in01);
         super.addCoupling(ap6.out, fogServer01.in01);
         super.addCoupling(ap7.out, fogServer01.in01);
         super.addCoupling(dh1.out, fogServer01.in01);
@@ -127,29 +128,32 @@ public class EntornoGlobal extends Coupled {
         super.addCoupling(dh9.out, fogServer01.in01);
         super.addCoupling(dh10.out, fogServer01.in01);
         super.addCoupling(dh11.out, fogServer01.in01);
-        */
+        
         super.addCoupling(fogServer01.out, dataCenter.in01);        
         
     }
 
     public static void main(String args[]) {
     	System.out.println("Begin.......");
-        DevsLogger.setup(Level.INFO);
+        //DevsLogger.setup(Level.INFO);
+    	DevsLogger.setup(Level.SEVERE);
         SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         LocalDateTime start = null;
         LocalDateTime stop = null;
         try {
             Date startAux = fmt.parse("2010-03-20 07:30:00");
             start = startAux.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
-            Date stopAux = fmt.parse("2010-03-20 07:30:04");
-            //Date stopAux = fmt.parse("2010-03-25 17:29:59");
+            Date stopAux = fmt.parse("2010-03-20 08:29:59");
             stop = stopAux.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
         } catch (Exception ee) {
             LOGGER.severe(ee.getLocalizedMessage());
             return;
         }
         EntornoGlobal eg = new EntornoGlobal("EntornoGlobal", start, stop);
-        Coordinator coordinator = new Coordinator(eg);
+        
+        CoordinatorParallel coordinator = new CoordinatorParallel(eg);
+        
+        //Coordinator coordinator = new Coordinator(eg);
         coordinator.initialize();
         coordinator.simulate(Long.MAX_VALUE);
         coordinator.exit();
