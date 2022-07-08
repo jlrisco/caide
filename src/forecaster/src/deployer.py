@@ -165,6 +165,7 @@ class Deployer():
         # base should be the same day at the first recorded time
         
         for _ in range(reps):
+            
             id_now = self.__datetime_to_idx(now)
             if id_now < self.n_x or id_now > self.__datetime_to_idx(self.last_hour) - self.forecast_horizon[-1]:
                 x = self.first_hour + dt.timedelta(minutes=self.n_x)
