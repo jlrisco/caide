@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 from lib.util import CommandEvent, CommandEventId, SensorEvent
@@ -9,7 +10,7 @@ logger = get_logger(__name__, logging.DEBUG)
 class VirtualNode(Atomic):
     '''Simulated sensor'''
 
-    PHASE_INITIALIZE:str = "INITIALIZE"
+    PHASE_NEXT_DATA:str = "NEXT_DATA"
 
     def __init__(self, name: str, base_folder: str = os.path.join('data','input','sensors_data')):
         super().__init__(name)
@@ -18,7 +19,7 @@ class VirtualNode(Atomic):
         self.files: list = []
         # Ports
         self.iport_cmd = Port(CommandEvent, "cmd")   # Event includes the command
-        self.add_in_port(self.oport_cmd)
+        self.add_in_port(self.iport_cmd)
         self.oport_out = Port(SensorEvent, "out")   # Event includes the measurements
         self.add_out_port(self.oport_out)
         # Rest of the attributes
@@ -46,11 +47,17 @@ class VirtualNode(Atomic):
 
     def lambdaf(self):
         """DEVS output function."""
-        pass
+        self.oport_out.add(self.current_input)
 
     def deltint(self):
         """DEVS internal transition function."""
-        self.passivate()
+        if (self.next_input is None):
+            self.passivate()
+        else:
+            sigma_aux: float = (self.next_input.timestamp - self.current_input.timestamp).total_seconds()
+            self.hold_in(self.PHASE_NEXT_DATA, sigma_aux)
+            self.current_input = self.next_input
+            self.next_input = self.get_next_input()
 
     def deltext(self, e):
         self.continuef(e)
@@ -58,18 +65,26 @@ class VirtualNode(Atomic):
         if self.iport_cmd.empty() is False:
             cmd: CommandEvent = self.iport_cmd.get()
             if cmd.cmd == CommandEventId.CMD_START_SIM:
+                self.start = cmd.date
+                self.stop = datetime.datetime(9999, 1, 1, 0, 0, 0)
                 self.file_counter: int = 0
                 self.reader = None
                 self.current_input: SensorEvent = None
                 self.next_input: SensorEvent = None
                 self.update_inputs()
-                self.hold_in(self.PHASE_INITIALIZE, 0.0) # TODO: This is not correct, fix it.
+                sigma_aux: float = (self.current_input.timestamp - self.start).total_seconds()
+                self.hold_in(self.PHASE_NEXT_DATA, sigma_aux)
+            if cmd.cmd == CommandEventId.CMD_STOP_SIM:
+                self.stop = cmd.date
+                self.next_input = None
+                self.reader.close()
+                self.passivate()
 
     def update_inputs(self):
         """Function to update the inputs."""
-        while (self.current_input is None or current_input.getDate().isBefore(start)): # No se ha leído nunca la primera entrada.
-            currentInput = self.get_next_input()
-        next_input = self.get_next_input()
+        while ((self.current_input is None) or (self.current_input.timestamp < self.start)): # No se ha leído nunca la primera entrada.
+            self.current_input = self.get_next_input()
+        self.next_input = self.get_next_input()
 
     def get_next_input(self):
         """Function to get the next input."""
@@ -92,6 +107,6 @@ class VirtualNode(Atomic):
             else:  # No quedan ficheros
                 return None
         input = SensorEvent.parse(self.name, line)
-        if (input.getDate().isAfter(stop)):  # No quedan más datos en el intervalo de simulación.
+        if (input.timestamp > self.stop):  # No quedan más datos en el intervalo de simulación.
             return None
         return input
