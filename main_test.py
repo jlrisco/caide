@@ -18,12 +18,15 @@ class MainTest(Coupled):
         # Sensores Internos
 
         sensor_ap1 = VirtualNode(name="ap1")
+        sensor_ap3 = VirtualNode(name="ap3")
         
         # Components:
         self.add_component(generator)
         self.add_component(sensor_ap1)
+        self.add_component(sensor_ap3)
         # Coupling relations:
         self.add_coupling(generator.o_cmd, sensor_ap1.iport_cmd)
+        self.add_coupling(generator.o_cmd, sensor_ap3.iport_cmd)
 
 
 if __name__ == "__main__":

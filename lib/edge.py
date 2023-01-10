@@ -5,17 +5,17 @@ from lib.util import CommandEvent, CommandEventId, SensorEvent
 from xdevs import get_logger
 from xdevs.models import Atomic, Port
 
-logger = get_logger(__name__, logging.DEBUG)
+logger = get_logger(__name__, logging.INFO)
 
 class VirtualNode(Atomic):
     '''Simulated sensor'''
 
     PHASE_NEXT_DATA:str = "NEXT_DATA"
 
-    def __init__(self, name: str, base_folder: str = os.path.join('data','input','sensors_data')):
+    def __init__(self, name: str, sensors_folder: str = os.path.join('data','input','sensors_data')):
         super().__init__(name)
         # Simple attributes
-        self.base_folder: str = base_folder
+        self.sensors_folder: str = sensors_folder
         self.files: list = []
         # Ports
         self.iport_cmd = Port(CommandEvent, "cmd")   # Event includes the command
@@ -24,9 +24,9 @@ class VirtualNode(Atomic):
         self.add_out_port(self.oport_out)
         # Rest of the attributes
         name_parts: list = name.split(".")
-        name_data_folder = os.path.join(self.base_folder, name_parts[-1])
-        for file_entry in os.listdir(name_data_folder):
-            file_path: str = os.path.join(name_data_folder, file_entry)
+        name_sensors_folder = os.path.join(self.sensors_folder, name_parts[-1])
+        for file_entry in os.listdir(name_sensors_folder):
+            file_path: str = os.path.join(name_sensors_folder, file_entry)
             if os.path.isfile(file_path):
                 self.files.append(file_path)
         '''
@@ -47,6 +47,7 @@ class VirtualNode(Atomic):
 
     def lambdaf(self):
         """DEVS output function."""
+        logger.debug("lambdaf: %s", self.current_input.to_string())
         self.oport_out.add(self.current_input)
 
     def deltint(self):

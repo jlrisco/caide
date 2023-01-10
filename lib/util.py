@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from xdevs import get_logger
 from xdevs.models import Atomic, Port
 
-logger = get_logger(__name__, logging.DEBUG)
+logger = get_logger(__name__, logging.INFO)
 
 @dataclass
 class SensorEvent:
