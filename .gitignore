@@ -1,20 +1,2 @@
-target
-*.swp
-*.log
-output.txt
-# IntelliJ stuff
-.idea/
-xdevs.iml
-out/
-*.iml
-
-# Apache netbeans
-nb-configuration.xml
-nbactions.xml
-
-# Others
-.settings
-.classpath
-.project
-logger.*
+__pycache__
 data/output/*
