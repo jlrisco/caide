@@ -2,13 +2,27 @@ import logging
 import datetime as dt
 from enum import Enum
 from dataclasses import dataclass, field
+from abc import ABC, abstractmethod
 from xdevs import get_logger
 from xdevs.models import Atomic, Port
 
 logger = get_logger(__name__, logging.INFO)
 
+class DataEvent(ABC):
+    """Abstract class for data events."""
+
+    @abstractmethod
+    def to_string(self) -> str:
+        """Return a string representation of the event."""
+        pass
+
+    @abstractmethod
+    def parse(name: str, line: str) -> 'DataEvent':
+        """Parse a string representation of the event."""
+        pass
+
 @dataclass
-class SensorEvent:
+class SensorEvent(DataEvent):
     """A message to model events."""
 
     source: str = field(default_factory=str)
@@ -126,10 +140,9 @@ class DevsCsvFile(Atomic):
     """Class to save data in csv file."""
     PHASE_WRITING:str = "WRITING"
 
-    def __init__(self, name: str, source_name: str, fields: list, base_folder: str):
+    def __init__(self, name: str, fields: list, base_folder: str):
         """Class constructor"""
         super().__init__(name)
-        self.source_name: str = source_name
         self.fields: list = fields
         self.base_folder: str = base_folder
         self.iport_data: Port = Port(SensorEvent, "data")
@@ -172,6 +185,6 @@ class DevsCsvFile(Atomic):
                     self.base_file.close()
                 super().passivate()
         if (self.iport_data.empty() is False and self.phase == DevsCsvFile.PHASE_WRITING):
-            data: SensorEvent = self.iport_data.get()
+            data: DataEvent = self.iport_data.get()
             self.base_file.write(data.to_string() + "\n")
             super().passivate(DevsCsvFile.PHASE_WRITING)
