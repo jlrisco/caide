@@ -1,7 +1,8 @@
 import logging
+import datetime
 from xdevs import get_logger
 from xdevs.models import Atomic, Port
-from lib.util import CommandEvent
+from lib.util import CommandEvent, CommandEventId, SensorEvent
 
 logger = get_logger(__name__, logging.DEBUG)
 
@@ -36,18 +37,12 @@ class FogServer(Atomic):
         """DEVS external transition function."""
         if self.iport_cmd.empty() is False:
             cmd: CommandEvent = self.iport_cmd.get()
-            if cmd.cmd == CommandEventId.CMD_START_SIM:
-                self.start = cmd.date
-                self.stop = datetime.datetime(9999, 1, 1, 0, 0, 0)
-                self.file_counter: int = 0
-                self.reader = None
-                self.current_input: SensorEvent = None
-                self.next_input: SensorEvent = None
-                self.update_inputs()
-                sigma_aux: float = (self.current_input.timestamp - self.start).total_seconds()
-                self.hold_in(self.PHASE_NEXT_DATA, sigma_aux)
-            if cmd.cmd == CommandEventId.CMD_STOP_SIM:
-                self.stop = cmd.date
-                self.next_input = None
-                self.reader.close()
+            if cmd.cmd == CommandEventId.CMD_RUN_PREDICTION:
+                logger.info(f"Fog server received command to run prediction with arguments: {cmd.args} ...")
+                # TODO: Complete this:
+                self.run_prediction(cmd.args[0], cmd.args[1], cmd.args[2], int(cmd.args[3]))
                 self.passivate()
+
+    def run_prediction(self, data_center_name: str, fog_server_name: str, dt: datetime.datetime, reps: int):
+        """Run prediction for a given data center."""
+        logger.info(f"Running prediction for data center: {data_center_name}")

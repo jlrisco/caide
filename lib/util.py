@@ -49,6 +49,7 @@ class CommandEventId(Enum):
 
     CMD_START_SIM = "START_SIM"
     CMD_STOP_SIM = "STOP_SIM"
+    CMD_RUN_PREDICTION = "RUN_PREDICTION"
     # CMD_FIX_OUTLIERS = "FIX_OUTLIERS"
     # CMD_FOG_REPORT = "FOG_REPORT"
     # CMD_CLOUD_REPORT = "CLOUD_REPORT"
@@ -70,7 +71,7 @@ class CommandEvent:
         self.date = dt.datetime.strptime(parts[0], '%Y-%m-%d %H:%M:%S')
         self.cmd = CommandEventId[parts[1]]
         if(len(parts) > 2):
-            self.args = parts[2]
+            self.args = parts[2:]
 
     def str(self):
         """Return a string representation of this object."""
