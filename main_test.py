@@ -31,7 +31,7 @@ class MainTest(Coupled):
             self.add_coupling(generator.o_cmd, db.iport_cmd)
             self.add_coupling(sensor.oport_out, db.iport_data)
         # Main body
-        fog = FogServer("FogServer01")
+        fog = FogServer("FogServer01", sensor_names)
         self.add_component(fog)
         self.add_coupling(generator.o_cmd, fog.iport_cmd)
 
