@@ -1,5 +1,6 @@
 import datetime
 import logging
+import numpy as np
 import tables as tb
 from xdevs import get_logger
 from xdevs.models import Atomic, Port
@@ -54,6 +55,7 @@ class FogServer(Atomic):
         current_day = -1
         sensor_files = {}
         current_data = {}
+        table = []
         # Open files
         for sensor_name in self.sensor_names:
             sensor_files[sensor_name] = open(f"data/output/{data_center_name}/{sensor_name}.csv", mode='r')
@@ -68,8 +70,11 @@ class FogServer(Atomic):
         while current_dt < stop_dt:
             aux_day = current_dt.day
             if aux_day != current_day:
+                if current_day != -1:
+                    # Save the table
+                    h5.create_array(group_fog, current_dt.strftime("%Y-%m-%d"), table)
+                    table = []
                 current_day = aux_day
-                group_day = h5.create_group(group_fog, current_dt.strftime("%Y-%m-%d"))
             # Read data from files
             for sensor_name in self.sensor_names:
                 sensor_dt = datetime.datetime.strptime("1900-01-01 10:00:00", "%Y-%m-%d %H:%M:%S")
@@ -83,11 +88,11 @@ class FogServer(Atomic):
                     current_data[sensor_name] = float(line.split(',')[2])
             # Prepare the new row
             row: list = []
-            row.append(current_dt.timestamp)
+            row.append(current_dt.timestamp())
             for sensor_name in self.sensor_names:
                 row.append(current_data[sensor_name])
-            # Append the new row to the group_day
-            h5.get_node(group_fog, group_day).append(row)
+            # Append the new row to the table
+            table.append(row)
             current_dt += datetime.timedelta(seconds=step)
         # Close files
         for sensor_name in self.sensor_names:
