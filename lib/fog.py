@@ -2,8 +2,10 @@ import datetime
 import logging
 import numpy as np
 import tables as tb
+import time
 from xdevs import get_logger
 from xdevs.models import Atomic, Port
+from lib.forecaster.src.deployer import Deployer
 from lib.util import CommandEvent, CommandEventId, SensorEvent
 
 logger = get_logger(__name__, logging.DEBUG)
@@ -12,9 +14,13 @@ logger = get_logger(__name__, logging.DEBUG)
 class FogServer(Atomic):
     """Simulated fog server"""
 
-    def __init__(self, name: str, sensor_names: list):
+    def __init__(self, name: str, sensor_names: list, sensor_latitudes: list, sensor_longitudes: list, sensor_means: list, sensor_stdevs: list):
         super().__init__(name)
         self.sensor_names = sensor_names
+        self.sensor_latitudes = sensor_latitudes
+        self.sensor_longitudes = sensor_longitudes
+        self.sensor_means = sensor_means
+        self.sensor_stdevs = sensor_stdevs
         # Ports
         self.iport_cmd = Port(CommandEvent, "cmd")
         self.add_in_port(self.iport_cmd)
@@ -47,6 +53,13 @@ class FogServer(Atomic):
                 step = int(cmd.args[4])
                 self.generate_h5_file(cmd.args[0], cmd.args[1], start_dt, stop_dt, step)
                 self.passivate()
+            if cmd.cmd == CommandEventId.CMD_RUN_PREDICTION:
+                logger.info(f"Fog server received command to generate prediction with arguments: {cmd.args[0:-1]} ...")
+                start_dt: datetime = datetime.datetime.strptime(cmd.args[2], "%Y-%m-%d %H:%M:%S")
+                stop_dt: datetime = datetime.datetime.strptime(cmd.args[3], "%Y-%m-%d %H:%M:%S")
+                n_times: int = int(cmd.args[4])
+                self.run_prediction(cmd.args[0], cmd.args[1], start_dt, stop_dt, n_times)
+                self.passivate()
 
     def generate_h5_file(self, data_center_name: str, fog_server_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, step: int):
         """Generate h5 file with the data for the prediction."""
@@ -64,15 +77,19 @@ class FogServer(Atomic):
             current_data[sensor_name] = 0
         # Prepare the H5 file
         h5 = tb.open_file('data/output/example.h5', 'w')
-        group_fog = h5.create_group("/", data_center_name)
-        group_fog = h5.create_group(group_fog, fog_server_name)
+        group_farm = h5.create_group("/", data_center_name)
+        group_farm = h5.create_group(group_farm, fog_server_name)
+        # Write latitudes and longitudes        
+        self.h5_add_lat_lon(h5, group_farm)
+        # Write means and stdevs
+        self.h5_add_means_stdevs(h5, group_farm)
         # Loop over the time
         while current_dt < stop_dt:
             aux_day = current_dt.day
             if aux_day != current_day:
                 if current_day != -1:
                     # Save the table
-                    h5.create_array(group_fog, current_dt.strftime("%Y-%m-%d"), table)
+                    h5.create_array(group_farm, current_dt.strftime("%Y-%m-%d"), table)
                     table = []
                 current_day = aux_day
             # Read data from files
@@ -99,3 +116,31 @@ class FogServer(Atomic):
             sensor_files[sensor_name].close()
         # Close the H5 file
         h5.close()
+
+    def run_prediction(self, data_center_name: str, fog_server_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, n_times):
+        forecaster = Deployer(work_path='data/output', dataset='example.h5', server='FogServer01', first_hour=start_dt.strftime('%H:%M:%S'), last_hour=stop_dt.strftime('%H:%M:%S'))
+        tic = time.time() 
+        forecaster.forecast(now=stop_dt, reps=n_times)
+        print('Prediction successful! it took {} in total'.format(time.strftime('%H:%M:%S', time.gmtime(time.time() - tic))))
+
+    def h5_add_lat_lon(self, h5, group_farm):
+        # node_farm = h5.get_node(group_farm)
+        columns = ["time_since_epoch"]
+        sc_lat_map = {}
+        sc_lon_map = {}
+        for i in range(len(self.sensor_names)):
+            columns.append(self.sensor_names[i])
+            sc_lat_map[self.sensor_names[i]] = self.sensor_latitudes[i]
+            sc_lon_map[self.sensor_names[i]] = self.sensor_longitudes[i]
+        group_farm._v_attrs["sc_lat_map"] = sc_lat_map
+        group_farm._v_attrs["sc_lon_map"] = sc_lon_map
+        group_farm._v_attrs["columns"] = columns
+
+    def h5_add_means_stdevs(self, h5, group_farm):
+        sc_mean_map = {}
+        sc_std_map = {}
+        for i in range(len(self.sensor_names)):
+            sc_mean_map[self.sensor_names[i]] = self.sensor_means[i]
+            sc_std_map[self.sensor_names[i]] = self.sensor_stdevs[i]
+        group_farm._v_attrs["sc_mean_map"] = sc_mean_map
+        group_farm._v_attrs["sc_std_map"] = sc_std_map

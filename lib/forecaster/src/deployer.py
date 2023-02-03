@@ -5,7 +5,7 @@ import tables as tb
 from scipy.interpolate import griddata
 import datetime as dt
 import warnings
-import modelUtils
+import lib.forecaster.src.modelUtils as modelUtils
 import argparse
 
 class Deployer():
