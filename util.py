@@ -1,5 +1,10 @@
-import logging
 import datetime as dt
+import logging
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import tables as tb
 from enum import Enum
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
@@ -190,3 +195,119 @@ class DevsCsvFile(Atomic):
             data: DataEvent = self.iport_data.get()
             self.base_file.write(data.to_string() + "\n")
             super().passivate(DevsCsvFile.PHASE_WRITING)
+
+
+class FarmReportService:
+    """Class to generate farm reports."""
+
+    def __init__(self, data_center_name, farm_name, now_dt):
+        self.data_center_name = data_center_name
+        self.farm_name = farm_name
+        self.base_folder = f'data/output/DataCenter/{self.farm_name}'
+        self.now_dt = now_dt
+        self.html_title = "Farm Report"
+
+    def run(self):
+        logger.debug("FarmReportService::run()")
+        self.prepare_data()
+        self.prepare_figure1()
+        self.prepare_figure2()
+        self.prepare_figure3()
+        f = open(f'data/output/{self.data_center_name}/{self.farm_name}/farm_report.html', 'w')
+        f.write(self.prepare_html_code())
+        f.close()
+
+    def prepare_data(self):
+        # Now we extract input data and predictions (filepaths are always the same):
+        data_path = f'{self.base_folder}/prediction-input.h5'
+        prediction_path = f'{self.base_folder}/prediction-output.h5'
+        n_sensors = 17
+        n_horizons = 4
+        n = self.now_dt.strftime('%Y-%m-%d')
+        with tb.open_file(prediction_path, 'r') as h5_preds, tb.open_file(data_path, 'r') as h5_data:
+            timestamps = h5_preds.root.DataCenter[self.farm_name][n]._v_children.keys()
+            timestamps = list(timestamps)
+            self.preds = np.empty((len(timestamps), n_sensors, n_horizons))
+            persistence = np.empty((len(timestamps), n_sensors, n_horizons))
+            self.data = np.empty((len(timestamps), n_sensors))
+            for idx, t in enumerate(timestamps):
+                self.preds[idx] = h5_preds.root.DataCenter[self.farm_name][n][t][:]
+                self.data[idx] = h5_data.root.DataCenter[self.farm_name][n][idx,1:]
+                for hh,h in enumerate([1,11,31,61]):
+                    if idx-h > 0: persistence[idx,:,hh] = h5_data.root.DataCenter[self.farm_name][n][idx-h,1:]
+                    else: persistence[idx,:,hh] = np.nan
+            self.sensors = h5_data.root.DataCenter[self.farm_name]._v_attrs['columns'][1:]
+        self.times = [pd.to_datetime(d) for d in timestamps]
+
+    def prepare_figure1(self):
+        sensor = 0
+        fig, ax = plt.subplots(2,2, figsize=(10,8),constrained_layout = True)
+        fig.suptitle('Predictions and real values for sensor {} at each horizon'.format(self.sensors[sensor]), fontsize=16)
+        for idx,h in enumerate(['1 min','11 min','31 min','61 min']):
+            ax[idx//2,idx%2].set_title(label='h = {}'.format(h))
+            ax[idx//2,idx%2].plot(self.times, self.data[:,sensor], label='simulated')
+            ax[idx//2,idx%2].plot(self.times, self.preds[:,sensor,idx], label='predicted')
+            ax[idx//2,idx%2].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+            ax[idx//2,idx%2].grid()
+            ax[idx//2,idx%2].legend()
+            ax[idx//2,idx%2].set_ylabel('GHI $[W/m^2]$')
+            ax[idx//2,idx%2].set_xlabel('Hour') #, fontsize=12)
+        plt.savefig(self.base_folder + "/figure1.png", dpi=400, bbox_inches='tight')
+
+    def prepare_figure2(self):
+        horizons = {0:1,1:11,2:31,3:61}
+        h = 2
+        n_sensors = 17
+        fig, ax = plt.subplots(6,3, figsize=(15,20),constrained_layout = True)
+        fig.suptitle('Predictions and real values for each sensor (horizon {} min)'.format(horizons[h]), fontsize=16)
+        for i in range(n_sensors):
+            ax[i//3,i%3].set_title(label=self.sensors[i])
+            ax[i//3,i%3].plot(self.times, self.data[:,i], label='truth')
+            ax[i//3,i%3].plot(self.times, self.preds[:,i,h], label='preds')
+            ax[i//3,i%3].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+            ax[i//3,i%3].grid()
+            ax[i//3,i%3].legend()
+            ax[i//3,i%3].set_ylabel('GHI $[W/m^2]$')
+            ax[i//3,i%3].set_xlabel('Hour') #, fontsize=12)
+        plt.savefig(self.base_folder + "/figure2.png", dpi=400, bbox_inches='tight')
+
+    def prepare_figure3(self):
+        horizons = {0:1,1:11,2:31,3:61}
+        h=1
+        fig, ax = plt.subplots(6,3, figsize=(15,20),constrained_layout = True)
+        fig.suptitle('Difference between predicted and real values for each sensor (horizon {} min)'.format(horizons[h]), fontsize=16)
+        for i in range(17):
+            ax[i//3,i%3].set_title(label=self.sensors[i])
+            ax[i//3,i%3].plot(self.times, np.abs(self.preds[:,i,h] - self.data[:,i]), label='preds - truth')
+            ax[i//3,i%3].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+            ax[i//3,i%3].grid()
+            ax[i//3,i%3].legend()
+            ax[i//3,i%3].set_ylabel('GHI $[W/m^2]$')
+            ax[i//3,i%3].set_xlabel('minutes since first prediction')
+        plt.savefig(self.base_folder + "/figure3.png", dpi=400, bbox_inches='tight')
+    
+    def prepare_html_code(self):
+        html = f'''
+            <html>
+                <head>
+                    <title>{self.html_title}</title>
+                </head>
+                <body>
+                    <h1>Plot predictions and real data for sensor ap1</h1>
+                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit ...</p>
+                    <p style="text-align:center;">
+                        <img src="figure1.png" width="70%" alt="ap1 data">
+                    </p>
+                    <h1>Plot predictions and real data for all the sensors</h1>
+                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit ...</p>
+                    <p style="text-align:center;">
+                        <img src="figure2.png" width="70%" alt="ap1 data">
+                    </p>
+                    <h1>Difference between predicted and real values for each sensor (horizon 11 min)</h1>
+                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit ...</p>
+                    <p style="text-align:center;">
+                        <img src="figure3.png" width="70%" alt="ap1 data">
+                    </p>
+                </body>
+            </html>'''
+        return html

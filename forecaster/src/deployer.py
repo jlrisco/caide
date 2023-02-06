@@ -157,7 +157,7 @@ class Deployer():
         # It is assumed that now is a datetime
         # base should be the same day at the first recorded time
         
-        for _ in range(reps):
+        for r in range(reps):
             
             id_now = self.__datetime_to_idx(now)
             if id_now < self.n_x or id_now > self.__datetime_to_idx(self.last_hour) - self.forecast_horizon[-1]:
@@ -200,7 +200,8 @@ class Deployer():
 
             # 7) Save result in ../data/predictions (same structure as the input?)
             dtype = tb.Float32Atom()
-            with tb.open_file(self.output_path, 'a') as h5_out,\
+            mode = 'w' if r==0 else 'a'
+            with tb.open_file(self.output_path, mode) as h5_out,\
                 warnings.catch_warnings() as w:
                 warnings.simplefilter('ignore', tb.NaturalNameWarning)
                 if 'DataCenter/{}/{:02}-{:02}-{:02}'.format(self.server,now.year,now.month,now.day) not in h5_out.root:

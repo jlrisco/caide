@@ -6,7 +6,7 @@ import time
 from xdevs import get_logger
 from xdevs.models import Atomic, Port
 from forecaster.src.deployer import Deployer
-from util import CommandEvent, CommandEventId
+from util import CommandEvent, CommandEventId, FarmReportService
 
 logger = get_logger(__name__, logging.DEBUG)
 
@@ -112,6 +112,11 @@ class FarmServer(Atomic):
             # Append the new row to the table
             table.append(row)
             current_dt += datetime.timedelta(seconds=step)
+
+        # Check the last table
+        if len(table) > 0:
+            h5.create_array(group_farm, current_dt.strftime("%Y-%m-%d"), table)
+            table = []
         # Close files
         for sensor_name in self.sensor_names:
             sensor_files[sensor_name].close()
@@ -123,6 +128,8 @@ class FarmServer(Atomic):
         tic = time.time() 
         forecaster.forecast(now=now_dt, reps=n_times)
         print('Prediction successful! it took {} in total'.format(time.strftime('%H:%M:%S', time.gmtime(time.time() - tic))))
+        report: FarmReportService = FarmReportService(data_center_name, farm_name, now_dt)
+        report.run()
 
     def h5_add_lat_lon(self, h5, group_farm):
         # node_farm = h5.get_node(group_farm)
