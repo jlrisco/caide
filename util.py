@@ -200,30 +200,28 @@ class DevsCsvFile(Atomic):
 class FarmReportService:
     """Class to generate farm reports."""
 
-    def __init__(self, data_center_name, farm_name, now_dt):
+    def __init__(self, data_center_name, farm_name):
         self.data_center_name = data_center_name
         self.farm_name = farm_name
         self.base_folder = f'data/output/DataCenter/{self.farm_name}'
-        self.now_dt = now_dt
-        self.html_title = "Farm Report"
 
-    def run(self):
-        logger.debug("FarmReportService::run()")
-        self.prepare_data()
-        self.prepare_figure1()
-        self.prepare_figure2()
-        self.prepare_figure3()
-        f = open(f'data/output/{self.data_center_name}/{self.farm_name}/farm_report.html', 'w')
-        f.write(self.prepare_html_code())
+    def generate_prediction_report(self, now_dt):
+        logger.debug("FarmReportService::generate_prediction_report()")
+        self.prepare_prediction_data(now_dt)
+        self.prepare_prediction_figure1()
+        self.prepare_prediction_figure2()
+        self.prepare_prediction_figure3()
+        f = open(f'data/output/{self.data_center_name}/{self.farm_name}/farm_prediction_report.html', 'w')
+        f.write(self.prepare_prediction_html_code())
         f.close()
 
-    def prepare_data(self):
+    def prepare_prediction_data(self, now_dt):
         # Now we extract input data and predictions (filepaths are always the same):
         data_path = f'{self.base_folder}/prediction-input.h5'
         prediction_path = f'{self.base_folder}/prediction-output.h5'
         n_sensors = 17
         n_horizons = 4
-        n = self.now_dt.strftime('%Y-%m-%d')
+        n = now_dt.strftime('%Y-%m-%d')
         with tb.open_file(prediction_path, 'r') as h5_preds, tb.open_file(data_path, 'r') as h5_data:
             timestamps = h5_preds.root.DataCenter[self.farm_name][n]._v_children.keys()
             timestamps = list(timestamps)
@@ -239,7 +237,7 @@ class FarmReportService:
             self.sensors = h5_data.root.DataCenter[self.farm_name]._v_attrs['columns'][1:]
         self.times = [pd.to_datetime(d) for d in timestamps]
 
-    def prepare_figure1(self):
+    def prepare_prediction_figure1(self):
         sensor = 0
         fig, ax = plt.subplots(2,2, figsize=(10,8),constrained_layout = True)
         fig.suptitle('Predictions and real values for sensor {} at each horizon'.format(self.sensors[sensor]), fontsize=16)
@@ -254,7 +252,7 @@ class FarmReportService:
             ax[idx//2,idx%2].set_xlabel('Hour') #, fontsize=12)
         plt.savefig(self.base_folder + "/figure1.png", dpi=400, bbox_inches='tight')
 
-    def prepare_figure2(self):
+    def prepare_prediction_figure2(self):
         horizons = {0:1,1:11,2:31,3:61}
         h = 2
         n_sensors = 17
@@ -271,7 +269,7 @@ class FarmReportService:
             ax[i//3,i%3].set_xlabel('Hour') #, fontsize=12)
         plt.savefig(self.base_folder + "/figure2.png", dpi=400, bbox_inches='tight')
 
-    def prepare_figure3(self):
+    def prepare_prediction_figure3(self):
         horizons = {0:1,1:11,2:31,3:61}
         h=1
         fig, ax = plt.subplots(6,3, figsize=(15,20),constrained_layout = True)
@@ -286,11 +284,11 @@ class FarmReportService:
             ax[i//3,i%3].set_xlabel('minutes since first prediction')
         plt.savefig(self.base_folder + "/figure3.png", dpi=400, bbox_inches='tight')
     
-    def prepare_html_code(self):
+    def prepare_prediction_html_code(self):
         html = f'''
             <html>
                 <head>
-                    <title>{self.html_title}</title>
+                    <title>Prediction Report</title>
                 </head>
                 <body>
                     <h1>Plot predictions and real data for sensor ap1</h1>
@@ -307,6 +305,43 @@ class FarmReportService:
                     <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit ...</p>
                     <p style="text-align:center;">
                         <img src="figure3.png" width="70%" alt="ap1 data">
+                    </p>
+                </body>
+            </html>'''
+        return html
+
+    def generate_outliers_report(self):
+        logger.debug("FarmReportService::generate_outliers_report()")
+        f = open(f'data/output/{self.data_center_name}/{self.farm_name}/farm_outliers_report.html', 'w')
+        f.write(self.prepare_outliers_html_code())
+        f.close()
+
+    def prepare_outliers_html_code(self):
+        html = f'''
+            <html>
+                <head>
+                    <title>Outliers Report</title>
+                </head>
+                <body>
+                    <h1>Real data for sensor ap1</h1>
+                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit ...</p>
+                    <p style="text-align:center;">
+                        <iframe id="outlier-figure1" scrolling="no" style="border:none;" seamless="seamless" src="fig_outliers-1.html" height="525" width="100%"></iframe>
+                    </p>
+                    <h1>Plot model</h1>
+                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit ...</p>
+                    <p style="text-align:center;">
+                        <img src="fig_outliers-2.png" width="70%" alt="ap1 model">
+                    </p>
+                    <h1>Plot real-data vs. model anomalies</h1>
+                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit ...</p>
+                    <p style="text-align:center;">
+                        <img src="fig_outliers-3.png" width="70%" alt="ap1 data">
+                    </p>
+                    <h1>Plot real-data vs. fixed data (after interpolation)</h1>
+                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit ...</p>
+                    <p style="text-align:center;">
+                        <img src="fig_outliers-4.png" width="70%" alt="ap1 data">
                     </p>
                 </body>
             </html>'''

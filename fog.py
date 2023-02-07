@@ -1,9 +1,14 @@
 import datetime
 import logging
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import plotly.express as px
+import seaborn as sns
 import tables as tb
 import time
+from prophet import Prophet
+from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error
 from xdevs import get_logger
 from xdevs.models import Atomic, Port
 from forecaster.src.deployer import Deployer
@@ -137,8 +142,8 @@ class FarmServer(Atomic):
         tic = time.time() 
         forecaster.forecast(now=now_dt, reps=n_times)
         print('Prediction successful! it took {} in total'.format(time.strftime('%H:%M:%S', time.gmtime(time.time() - tic))))
-        report: FarmReportService = FarmReportService(data_center_name, farm_name, now_dt)
-        report.run()
+        report: FarmReportService = FarmReportService(data_center_name, farm_name)
+        report.generate_prediction_report(now_dt)
 
     def h5_add_lat_lon(self, h5, group_farm):
         # node_farm = h5.get_node(group_farm)
@@ -163,16 +168,60 @@ class FarmServer(Atomic):
         group_farm._v_attrs["sc_std_map"] = sc_std_map
 
     def fix_outliers(self, data_center_name: str, farm_name: str, sensor_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, method: str):
-        """Fix outliers in the data."""
-        # Read CSV file
+        logger.info("Reading CSV file...")
         df = pd.read_csv(f'data/output/{data_center_name}/{farm_name}/{sensor_name}.csv')
         # Convert the date column to datetime
         df['timestamp'] = pd.to_datetime(df['timestamp'])
         # Filter by date column
         df = df[(df['timestamp'] >= start_dt) & (df['timestamp'] < stop_dt)]
-        # Fix outliers at column radiation
-        df['radiation'].mask(df['radiation'] > df['radiation'].mean() + 3*df['radiation'].std(), inplace=True)
-        df['radiation'].mask(df['radiation'] < df['radiation'].mean() - 3*df['radiation'].std(), inplace=True)
-        df['radiation'].interpolate(method=method, inplace=True)
+        # Save the figure:
+        fig1 = px.line(df, x="timestamp", y="radiation")
+        fig1.write_html(f'data/output/{data_center_name}/{farm_name}/fig_outliers-1.html')
+
+        logger.info("Preparing the model ...")
+        # Change column names
+        data = df.rename(columns={"timestamp": "ds", "radiation": "y"})
+        data.drop(labels=['source'], axis=1, inplace=True)
+        model = Prophet(interval_width=0.99)
+        model.fit(data)
+
+        logger.info("Making prediction ...")
+        forecast = model.predict(data)
+        # Visualize the forecast
+        fig2 = model.plot(forecast, figsize=(12,8)); # Add semi-colon to remove the duplicated chart
+        fig2.savefig(f'data/output/{data_center_name}/{farm_name}/fig_outliers-2.png', dpi=400, bbox_inches='tight')
+
+        # Merge actual and predicted values
+        performance = pd.merge(data, forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']], on='ds')
+        # Check MAE value
+        performance_MAE = mean_absolute_error(performance['y'], performance['yhat'])
+        print(f'The MAE for the model is {performance_MAE}')
+        # Check MAPE value
+        performance_MAPE = mean_absolute_percentage_error(performance['y'], performance['yhat'])
+        logger.info(f'The MAPE for the model is {performance_MAPE}')
+        # Create an anomaly indicator
+        performance['anomaly'] = performance.apply(lambda rows: 1 if ((rows.y<rows.yhat_lower)|(rows.y>rows.yhat_upper)) else 0, axis = 1)
+        # Check the number of anomalies
+        logger.info("Number of outliers: " + str(performance['anomaly'].value_counts()))
+        # Visualize the anomalies
+        fig3 = plt.figure(figsize=(12,8))
+        ax = sns.scatterplot(x='ds', y='y', data=performance, hue='anomaly')
+        sns.lineplot(x='ds', y='yhat', data=performance, color='black', ax=ax)
+        # Save the figure:
+        fig3.savefig(f'data/output/{data_center_name}/{farm_name}/fig_outliers-3.png', dpi=400, bbox_inches='tight')
+        # Compute fixed values
+        df_fixed = df.copy()
+        df_fixed.reset_index(inplace=True)
+        idx = performance.index[performance['anomaly'] == 1].tolist()
+        for id in idx:
+            df_fixed.loc[id, 'radiation'] = np.nan
+        df_fixed['radiation'].interpolate(method='linear', inplace=True)
+        fig4 = plt.figure(figsize=(12,8))
+        ax = sns.scatterplot(x='timestamp', y='radiation', data=df, label='Original')
+        sns.lineplot(x='timestamp', y='radiation', data=df_fixed, color='orange', label='Fixed', ax=ax)
+        fig4.savefig(f'data/output/{data_center_name}/{farm_name}/fig_outliers-4.png', dpi=400, bbox_inches='tight')
         # Save the new CSV file
-        df.to_csv(f'data/output/{data_center_name}/{farm_name}/{sensor_name}_fixed.csv', index=False)
+        df_fixed.to_csv(f'data/output/{data_center_name}/{farm_name}/{sensor_name}_fixed.csv', index=False)
+        # Generate the report
+        report: FarmReportService = FarmReportService(data_center_name, farm_name)
+        report.generate_outliers_report()
