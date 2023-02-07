@@ -52,11 +52,11 @@ class SensorEvent(DataEvent):
 class CommandEventId(Enum):
     """Allowed commands."""
 
-    CMD_START_SIM = "START_SIM"
-    CMD_STOP_SIM = "STOP_SIM"
+    CMD_ACTIVATE_SENSORS = "ACTIVATE_SENSORS"
+    CMD_PASSIVATE_SENSORS = "PASSIVATE_SENSORS"
     CMD_TO_H5 = "TO_H5"
     CMD_RUN_PREDICTION = "RUN_PREDICTION"
-    # CMD_FIX_OUTLIERS = "FIX_OUTLIERS"
+    CMD_FIX_OUTLIERS = "FIX_OUTLIERS"
     # CMD_FOG_REPORT = "FOG_REPORT"
     # CMD_CLOUD_REPORT = "CLOUD_REPORT"
 
@@ -179,7 +179,7 @@ class DevsCsvFile(Atomic):
         # Command input port                
         if self.iport_cmd.empty() is False:
             cmd: CommandEvent = self.iport_cmd.get()
-            if cmd.cmd == CommandEventId.CMD_START_SIM:
+            if cmd.cmd == CommandEventId.CMD_ACTIVATE_SENSORS:
                 self.base_file = open(self.base_folder + "/" + self.name + ".csv", "w")    
                 for pos, field in enumerate(self.fields):
                     if(pos > 0):
@@ -187,7 +187,7 @@ class DevsCsvFile(Atomic):
                     self.base_file.write(field)
                 self.base_file.write("\n")
                 super().passivate(DevsCsvFile.PHASE_WRITING)
-            if cmd.cmd == CommandEventId.CMD_STOP_SIM:
+            if cmd.cmd == CommandEventId.CMD_PASSIVATE_SENSORS:
                 if(self.base_folder is not None):
                     self.base_file.close()
                 super().passivate()

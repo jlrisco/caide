@@ -1,6 +1,7 @@
 import datetime
 import logging
 import os
+import random
 from util import CommandEvent, CommandEventId, SensorEvent
 from xdevs import get_logger
 from xdevs.models import Atomic, Port
@@ -65,7 +66,7 @@ class VirtualNode(Atomic):
         """DEVS external transition function."""
         if self.iport_cmd.empty() is False:
             cmd: CommandEvent = self.iport_cmd.get()
-            if cmd.cmd == CommandEventId.CMD_START_SIM:
+            if cmd.cmd == CommandEventId.CMD_ACTIVATE_SENSORS:
                 self.start = cmd.date
                 self.stop = datetime.datetime(9999, 1, 1, 0, 0, 0)
                 self.file_counter: int = 0
@@ -75,7 +76,7 @@ class VirtualNode(Atomic):
                 self.update_inputs()
                 sigma_aux: float = (self.current_input.timestamp - self.start).total_seconds()
                 self.hold_in(self.PHASE_NEXT_DATA, sigma_aux)
-            if cmd.cmd == CommandEventId.CMD_STOP_SIM:
+            if cmd.cmd == CommandEventId.CMD_PASSIVATE_SENSORS:
                 self.stop = cmd.date
                 self.next_input = None
                 self.reader.close()

@@ -1,4 +1,5 @@
 import os
+import random
 from xdevs.models import Coupled
 from xdevs.sim import Coordinator
 from xdevs import INFINITY
@@ -44,6 +45,8 @@ class OahuTest(Coupled):
 
 
 if __name__ == "__main__":
+    # Initialize the seed of random number generator:
+    random.seed(1975)
     # Create the output directory:
     model_name: str = "DataCenter"
     # model_name: str = "main_test" + "_" + strftime("%Y%m%d%H%M%S", localtime())

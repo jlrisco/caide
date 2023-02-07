@@ -1,6 +1,7 @@
 import datetime
 import logging
 import numpy as np
+import pandas as pd
 import tables as tb
 import time
 from xdevs import get_logger
@@ -60,6 +61,14 @@ class FarmServer(Atomic):
                 now_dt: datetime = datetime.datetime.strptime(cmd.args[4], "%Y-%m-%d %H:%M:%S")
                 n_times: int = int(cmd.args[5])
                 self.run_prediction(cmd.args[0], cmd.args[1], start_dt, stop_dt, now_dt, n_times)
+                self.passivate()
+            if cmd.cmd == CommandEventId.CMD_FIX_OUTLIERS:
+                logger.info(f"Fog server received command to fix outliers with arguments: {cmd.args[0:-1]} ...")
+                sensor_name: str = cmd.args[2]
+                start_dt: datetime = datetime.datetime.strptime(cmd.args[3], "%Y-%m-%d %H:%M:%S")
+                stop_dt: datetime = datetime.datetime.strptime(cmd.args[4], "%Y-%m-%d %H:%M:%S")
+                method: str = cmd.args[5]
+                self.fix_outliers(cmd.args[0], cmd.args[1], sensor_name, start_dt, stop_dt, method)
                 self.passivate()
 
     def generate_h5_file(self, data_center_name: str, farm_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, step: int):
@@ -152,3 +161,18 @@ class FarmServer(Atomic):
             sc_std_map[self.sensor_names[i]] = self.sensor_stdevs[i]
         group_farm._v_attrs["sc_mean_map"] = sc_mean_map
         group_farm._v_attrs["sc_std_map"] = sc_std_map
+
+    def fix_outliers(self, data_center_name: str, farm_name: str, sensor_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, method: str):
+        """Fix outliers in the data."""
+        # Read CSV file
+        df = pd.read_csv(f'data/output/{data_center_name}/{farm_name}/{sensor_name}.csv')
+        # Convert the date column to datetime
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        # Filter by date column
+        df = df[(df['timestamp'] >= start_dt) & (df['timestamp'] < stop_dt)]
+        # Fix outliers at column radiation
+        df['radiation'].mask(df['radiation'] > df['radiation'].mean() + 3*df['radiation'].std(), inplace=True)
+        df['radiation'].mask(df['radiation'] < df['radiation'].mean() - 3*df['radiation'].std(), inplace=True)
+        df['radiation'].interpolate(method=method, inplace=True)
+        # Save the new CSV file
+        df.to_csv(f'data/output/{data_center_name}/{farm_name}/{sensor_name}_fixed.csv', index=False)
