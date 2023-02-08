@@ -52,6 +52,7 @@ if __name__ == "__main__":
     # model_name: str = "main_test" + "_" + strftime("%Y%m%d%H%M%S", localtime())
     output_folder: str = os.path.join('data', 'output', model_name)
     os.makedirs(output_folder, exist_ok=True)
+    # TODO: Create Oahu directory if it does not exist
     coupled = OahuTest(model_name, os.path.join('data', 'input', 'simulations', 'main_test.txt'))
     coord = Coordinator(coupled)
     coord.initialize()
