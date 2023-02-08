@@ -3,6 +3,7 @@ import logging
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pandas as pd
 import tables as tb
 from enum import Enum
@@ -152,6 +153,7 @@ class DevsCsvFile(Atomic):
         super().__init__(name)
         self.fields: list = fields
         self.base_folder: str = base_folder
+        os.makedirs(base_folder, exist_ok=True)
         self.iport_data: Port = Port(SensorEvent, "data")
         self.add_in_port(self.iport_data)
         self.iport_cmd = Port(CommandEvent, "cmd")
@@ -200,10 +202,10 @@ class DevsCsvFile(Atomic):
 class FarmReportService:
     """Class to generate farm reports."""
 
-    def __init__(self, data_center_name, farm_name):
+    def __init__(self, data_center_name, farm_name, base_folder):
         self.data_center_name = data_center_name
         self.farm_name = farm_name
-        self.base_folder = f'data/output/DataCenter/{self.farm_name}'
+        self.base_folder = base_folder
 
     def generate_prediction_report(self, now_dt):
         logger.debug("FarmReportService::generate_prediction_report()")
@@ -211,7 +213,7 @@ class FarmReportService:
         self.prepare_prediction_figure1()
         self.prepare_prediction_figure2()
         self.prepare_prediction_figure3()
-        f = open(f'data/output/{self.data_center_name}/{self.farm_name}/farm_prediction_report.html', 'w')
+        f = open(f'{self.base_folder}/farm_prediction_report.html', 'w')
         f.write(self.prepare_prediction_html_code())
         f.close()
 
@@ -312,7 +314,7 @@ class FarmReportService:
 
     def generate_outliers_report(self):
         logger.debug("FarmReportService::generate_outliers_report()")
-        f = open(f'data/output/{self.data_center_name}/{self.farm_name}/farm_outliers_report.html', 'w')
+        f = open(f'{self.base_folder}/farm_outliers_report.html', 'w')
         f.write(self.prepare_outliers_html_code())
         f.close()
 

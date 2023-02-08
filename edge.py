@@ -13,10 +13,10 @@ class VirtualNode(Atomic):
 
     PHASE_NEXT_DATA:str = "NEXT_DATA"
 
-    def __init__(self, name: str, parent_folder: str, activate_dt: datetime, passivate_dt: datetime):
+    def __init__(self, name: str, parent_folder: str):
         super().__init__(name)
         # Simple attributes
-        self.base_folder: str = os.join(parent_folder, self.name)
+        self.base_folder: str = os.path.join(parent_folder, self.name)
         self.files: list = []
         # Ports
         self.iport_cmd = Port(CommandEvent, "cmd")   # Event includes the command
@@ -24,10 +24,8 @@ class VirtualNode(Atomic):
         self.oport_out = Port(SensorEvent, "out")   # Event includes the measurements
         self.add_out_port(self.oport_out)
         # Rest of the attributes
-        name_parts: list = name.split(".")
-        name_sensors_folder = os.path.join(self.base_folder, name_parts[-1])
-        for file_entry in os.listdir(name_sensors_folder):
-            file_path: str = os.path.join(name_sensors_folder, file_entry)
+        for file_entry in os.listdir(self.base_folder):
+            file_path: str = os.path.join(self.base_folder, file_entry)
             if os.path.isfile(file_path):
                 self.files.append(file_path)
         '''
