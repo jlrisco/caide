@@ -46,7 +46,7 @@ class VirtualNode(Atomic):
 
     def lambdaf(self):
         """DEVS output function."""
-        logger.debug("lambdaf: %s", self.current_input.to_string())
+        # logger.debug("lambdaf: %s", self.current_input.to_string())
         self.oport_out.add(self.current_input)
 
     def deltint(self):
