@@ -4,15 +4,13 @@ import redis
 import rq
 import task
 
-pool = redis.ConnectionPool(host='34.175.39.166', port=6379, db=0, password='Carmen1975!')
+pool = redis.ConnectionPool(host='192.168.1.1', port=6379, db=0, password='JdhskjaWjdk')
 redis_conn = redis.Redis(connection_pool=pool)
 
 redis_conn.set('mykey', 'Hello from Python!')
 value = redis_conn.get('mykey')
 print(value)
 
-# Create a Redis connection with 34.175.39.166
-# redis_conn = Redis(host='34.175.39.166')
 queue = rq.Queue(connection=redis_conn)
 
 x = 2
