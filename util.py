@@ -419,13 +419,13 @@ class DataUtils:
         h5_file.close()
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
     # Transform sensors data to H5
-    data_utils = DataUtils()
-    sensor_names: list[str] = ["ap1","ap3","ap4","ap5","ap6","ap7","dh1","dh2","dh3","dh4","dh5","dh6","dh7","dh8","dh9","dh10","dh11"]
-    sensor_latitudes: list[float] = [21.31276, 21.31281, 21.31141, 21.30983, 21.30812, 21.31478, 21.31533, 21.31451, 21.31236, 21.31303, 21.31357, 21.31179, 21.31418, 21.31034, 21.31268, 21.31183, 21.31042]
-    sensor_longitudes: list[float] = [-158.08389, -158.08163, -158.07947, -158.08249, -158.07935, -158.07785, -158.087, -158.08534, -158.08463, -158.08505, -158.08424, -158.08678, -158.08685, -158.08675, -158.08688, -158.08554, -158.0853]
-    data_utils.transform_sensors_input_csv_data_to_h5(base_folder='data/input', data_center_name='DataCenter', farm_name='Oahu', sensor_names=sensor_names, sensor_latitudes=sensor_latitudes, sensor_longitudes=sensor_longitudes)
+    # data_utils = DataUtils()
+    # sensor_names: list[str] = ["ap1","ap3","ap4","ap5","ap6","ap7","dh1","dh2","dh3","dh4","dh5","dh6","dh7","dh8","dh9","dh10","dh11"]
+    # sensor_latitudes: list[float] = [21.31276, 21.31281, 21.31141, 21.30983, 21.30812, 21.31478, 21.31533, 21.31451, 21.31236, 21.31303, 21.31357, 21.31179, 21.31418, 21.31034, 21.31268, 21.31183, 21.31042]
+    # sensor_longitudes: list[float] = [-158.08389, -158.08163, -158.07947, -158.08249, -158.07935, -158.07785, -158.087, -158.08534, -158.08463, -158.08505, -158.08424, -158.08678, -158.08685, -158.08675, -158.08688, -158.08554, -158.0853]
+    # data_utils.transform_sensors_input_csv_data_to_h5(base_folder='data/input', data_center_name='DataCenter', farm_name='Oahu', sensor_names=sensor_names, sensor_latitudes=sensor_latitudes, sensor_longitudes=sensor_longitudes)
     # Let's print firt row of ap1 table
     # h5_file = tb.open_file('data/input/DataCenter/Oahu/sensors.h5', 'r')
     # table = h5_file.root.DataCenter.Oahu.data.ap1
