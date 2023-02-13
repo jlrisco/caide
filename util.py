@@ -7,47 +7,17 @@ import os
 import pandas as pd
 import tables as tb
 from enum import Enum
-from dataclasses import dataclass, field
-from abc import ABC, abstractmethod
 from xdevs import get_logger
 from xdevs.models import Atomic, Port
 
 logger = get_logger(__name__, logging.INFO)
 
-class DataEvent(ABC):
-    """Abstract class for data events."""
 
-    @abstractmethod
-    def to_string(self) -> str:
-        """Return a string representation of the event."""
-        pass
+class SensorEvent(tb.IsDescription):
+    """Class to define the structure of the table in the HDF5 file."""
 
-    @abstractmethod
-    def parse(name: str, line: str) -> 'DataEvent':
-        """Parse a string representation of the event."""
-        pass
-
-@dataclass
-class SensorEvent(DataEvent):
-    """A message to model events."""
-
-    source: str = field(default_factory=str)
-    timestamp: dt.datetime = field(default_factory=dt.datetime.now)
-    radiation: float = field(default_factory=float)
-
-    def to_string(self) -> str:
-        """Return a string representation of the event."""
-        msg: str = f"{self.source},{self.timestamp},{self.radiation}"
-        return msg
-
-    def parse(name: str, line: str) -> 'SensorEvent':
-        """Parse a string representation of the event."""
-        parts: list = line.split(',')
-        event: SensorEvent = SensorEvent()
-        event.source = name
-        event.timestamp = dt.datetime.strptime(parts[0], '%Y-%m-%d %H:%M:%S-10:00')
-        event.radiation = float(parts[1])
-        return event
+    timestamp = tb.Time64Col(pos=0)
+    radiation = tb.Float32Col(pos=1)    # TODO: Radiation, W/m2?
 
 
 class CommandEventId(Enum):
@@ -55,7 +25,7 @@ class CommandEventId(Enum):
 
     CMD_ACTIVATE_SENSORS = "ACTIVATE_SENSORS"
     CMD_PASSIVATE_SENSORS = "PASSIVATE_SENSORS"
-    CMD_TO_H5 = "TO_H5"
+    CMD_PREPARE_PREDICTION = "PREPARE_PREDICTION"
     CMD_RUN_PREDICTION = "RUN_PREDICTION"
     CMD_FIX_OUTLIERS = "FIX_OUTLIERS"
     # CMD_FOG_REPORT = "FOG_REPORT"
@@ -194,9 +164,58 @@ class DevsCsvFile(Atomic):
                     self.base_file.close()
                 super().passivate()
         if (self.iport_data.empty() is False and self.phase == DevsCsvFile.PHASE_WRITING):
-            data: DataEvent = self.iport_data.get()
+            data: SensorEvent = self.iport_data.get()
             self.base_file.write(data.to_string() + "\n")
             super().passivate(DevsCsvFile.PHASE_WRITING)
+
+
+class DevsH5File(Atomic):
+    """Class to save data in H5 file."""
+    PHASE_WRITING:str = "WRITING"
+
+    def __init__(self, name: str, parent_group: tb.Group, h5_file: tb.File):
+        """Class constructor"""
+        super().__init__(name)
+        self.table = h5_file.create_table(parent_group, name, SensorEvent, name)
+        self.iport_data: Port = Port(SensorEvent, "data")
+        self.add_in_port(self.iport_data)
+        self.iport_cmd = Port(CommandEvent, "cmd")
+        self.add_in_port(self.iport_cmd)
+
+    def initialize(self):
+        """DEVS initialize function."""
+        super().passivate()
+
+    def exit(self):
+        """DEVS exit function."""
+        pass
+
+    def lambdaf(self):
+        """DEVS lambda function."""
+        pass
+
+    def deltint(self):
+        """DEVS deltint function."""
+        super().passivate()
+
+    def deltext(self, e):
+        """DEVS deltext function."""
+        self.continuef(e)
+        # Command input port                
+        if self.iport_cmd.empty() is False:
+            cmd: CommandEvent = self.iport_cmd.get()
+            if cmd.cmd == CommandEventId.CMD_ACTIVATE_SENSORS:
+                super().passivate(DevsH5File.PHASE_WRITING)
+            if cmd.cmd == CommandEventId.CMD_PASSIVATE_SENSORS:
+                self.table.flush()
+                super().passivate()
+        if (self.iport_data.empty() is False and self.phase == DevsH5File.PHASE_WRITING):
+            event: SensorEvent = self.iport_data.get()
+            new_row = self.table.row
+            new_row['timestamp'] = event.timestamp
+            new_row['radiation'] = event.radiation
+            new_row.append()
+            super().passivate(DevsH5File.PHASE_WRITING)
 
 
 class FarmReportService:
@@ -348,3 +367,72 @@ class FarmReportService:
                 </body>
             </html>'''
         return html
+
+
+class DataUtils:
+    """Class for data utilities""" 
+
+
+    class SensorData(tb.IsDescription):
+        """Class to define the structure of the table in the HDF5 file."""
+
+        timestamp = tb.Time64Col(pos=0)
+        radiation = tb.Float32Col(pos=1)    # TODO: Radiation, W/m2?
+
+
+    def __init__(self):
+        pass
+
+    def transform_sensors_input_csv_data_to_h5(self, base_folder: str, data_center_name: str, farm_name: str, sensor_names: list[str], sensor_latitudes: list[float], sensor_longitudes: list[float]):
+        # Let's create the h5 file
+        h5_file = tb.open_file(f'{base_folder}/{farm_name}/sensors_data.h5', 'w')
+        # Now, we create the group for the farm:
+        info_group = h5_file.create_group('/', 'info', 'Basic information')
+        data_group = h5_file.create_group('/', 'data', 'Sensor data')
+        # In the following we add tables regarding sensor names, latitudes and longitudes
+        h5_file.create_array(info_group, 'sensor_names', sensor_names)
+        h5_file.create_array(info_group, 'sensor_latitudes', np.array(sensor_latitudes))
+        h5_file.create_array(info_group, 'sensor_longitudes', np.array(sensor_longitudes))
+        for sensor_name in sensor_names:
+            sensor_file_paths: list = []
+            for file_name in os.listdir(f'{base_folder}/{data_center_name}/{farm_name}/{sensor_name}'):
+                file_path: str = os.path.join(f'{base_folder}/{data_center_name}/{farm_name}/{sensor_name}', file_name)
+                if os.path.isfile(file_path):
+                    sensor_file_paths.append(file_path)
+                    print(f'Storing file path {file_path} ...')
+            sensor_file_paths.sort()
+            # Now, we create the table for the sensor
+            table = h5_file.create_table(data_group, sensor_name, DataUtils.SensorData, f'Sensor {sensor_name} data')
+            # ... and add all the CSV data to the table
+            for sensor_file_path in sensor_file_paths:
+                print(f'Processing file {sensor_file_path} ...')
+                reader = open(sensor_file_path, 'r')
+                reader.readline()  # Nos saltamos la cabecera
+                for line in reader:
+                    parts: list = line.split(',')
+                    sensor_data = table.row
+                    sensor_data['timestamp'] = dt.datetime.strptime(parts[0], '%Y-%m-%d %H:%M:%S-10:00').timestamp()
+                    sensor_data['radiation'] = float(parts[1])
+                    sensor_data.append()
+                reader.close()
+            table.flush()
+        h5_file.close()
+
+
+if __name__ == "__main__":
+    # Transform sensors data to H5
+    data_utils = DataUtils()
+    sensor_names: list[str] = ["ap1","ap3","ap4","ap5","ap6","ap7","dh1","dh2","dh3","dh4","dh5","dh6","dh7","dh8","dh9","dh10","dh11"]
+    sensor_latitudes: list[float] = [21.31276, 21.31281, 21.31141, 21.30983, 21.30812, 21.31478, 21.31533, 21.31451, 21.31236, 21.31303, 21.31357, 21.31179, 21.31418, 21.31034, 21.31268, 21.31183, 21.31042]
+    sensor_longitudes: list[float] = [-158.08389, -158.08163, -158.07947, -158.08249, -158.07935, -158.07785, -158.087, -158.08534, -158.08463, -158.08505, -158.08424, -158.08678, -158.08685, -158.08675, -158.08688, -158.08554, -158.0853]
+    data_utils.transform_sensors_input_csv_data_to_h5(base_folder='data/input', data_center_name='DataCenter', farm_name='Oahu', sensor_names=sensor_names, sensor_latitudes=sensor_latitudes, sensor_longitudes=sensor_longitudes)
+    # Let's print firt row of ap1 table
+    # h5_file = tb.open_file('data/input/DataCenter/Oahu/sensors.h5', 'r')
+    # table = h5_file.root.DataCenter.Oahu.data.ap1
+    # for i in range(0, 10):
+    #     print(dt.datetime.fromtimestamp(table[i]['timestamp']).strftime('%Y-%m-%d %H:%M:%S'))
+    #     print(table[i]['ghi'])
+    #     print(table[i]['elevation'])
+    #     print(table[i]['azimut'])
+    #     print(table[i]['rel'])
+    # h5_file.close()

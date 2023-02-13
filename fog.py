@@ -13,7 +13,7 @@ from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error
 from xdevs import get_logger
 from xdevs.models import Atomic, Port
 from forecaster.src.deployer import Deployer
-from util import CommandEvent, CommandEventId, FarmReportService
+from util import CommandEvent, CommandEventId, FarmReportService, SensorEvent
 
 logger = get_logger(__name__, logging.DEBUG)
 
@@ -21,10 +21,8 @@ logger = get_logger(__name__, logging.DEBUG)
 class FarmServer(Atomic):
     """Simulated farm server"""
 
-    def __init__(self, name: str, sensor_names: list, sensor_latitudes: list, sensor_longitudes: list, sensor_means: list, sensor_stdevs: list, parent_input_folder: str):
+    def __init__(self, name: str, sensor_names: list, sensor_latitudes: list, sensor_longitudes: list, sensor_means: list, sensor_stdevs: list):
         super().__init__(name)
-        self.base_input_folder = os.path.join(parent_input_folder, self.name)
-        self.base_output_folder = self.base_input_folder.replace("input", "output")
         self.sensor_names = sensor_names
         self.sensor_latitudes = sensor_latitudes
         self.sensor_longitudes = sensor_longitudes
@@ -33,6 +31,10 @@ class FarmServer(Atomic):
         # Ports
         self.iport_cmd = Port(CommandEvent, "cmd")
         self.add_in_port(self.iport_cmd)
+        self.iports = {}
+        for sensor_name in self.sensor_names:
+            self.iports[sensor_name] = Port(SensorEvent, sensor_name)
+            self.add_in_port(self.iports[sensor_name])
 
     def initialize(self):
         """Initialization function."""
@@ -55,72 +57,92 @@ class FarmServer(Atomic):
         """DEVS external transition function."""
         if self.iport_cmd.empty() is False:
             cmd: CommandEvent = self.iport_cmd.get()
-            if cmd.cmd == CommandEventId.CMD_TO_H5 and cmd.args[0] == self.parent.name and cmd.args[1] == self.name:
+            if cmd.cmd == CommandEventId.CMD_ACTIVATE_SENSORS and cmd.args[0] == self.parent.name and cmd.args[1] == self.name:
+                base_folder = os.path.join('data', 'output', self.parent.name, self.name)
+                os.makedirs(os.path.dirname(base_folder), exist_ok=True)
+                # TODO: For the moment, we do not allow commands between the activation and the passivation of the sensors.
+                # This is a serious limitation.
+                self.db = tb.open_file(os.path.join(base_folder, cmd.args[2]), 'w')
+                self.tables = {}
+                dc_group = self.db.create_group('/', self.parent.name)
+                farm_group = self.db.create_group(dc_group, self.name)
+                for sensor_name in self.sensor_names:
+                    self.tables[sensor_name] = self.db.create_table(farm_group, sensor_name, SensorEvent, sensor_name)
+                super().passivate(CommandEventId.CMD_ACTIVATE_SENSORS.value)
+            if cmd.cmd == CommandEventId.CMD_PASSIVATE_SENSORS and cmd.args[0] == self.parent.name and cmd.args[1] == self.name:
+                self.db.close()
+                super().passivate(CommandEventId.CMD_PASSIVATE_SENSORS.value)
+            if cmd.cmd == CommandEventId.CMD_PREPARE_PREDICTION and cmd.args[0] == self.parent.name and cmd.args[1] == self.name:
                 logger.info(f"Fog server received command to generate the H5 file with arguments: {cmd.args[0:-1]} ...")
                 start_dt: datetime = datetime.datetime.strptime(cmd.args[2], "%Y-%m-%d %H:%M:%S")
                 stop_dt: datetime = datetime.datetime.strptime(cmd.args[3], "%Y-%m-%d %H:%M:%S")
                 step = int(cmd.args[4])
-                self.generate_h5_file(cmd.args[0], cmd.args[1], start_dt, stop_dt, step)
-                self.passivate()
+                self.generate_h5_file(cmd.args[0], cmd.args[1], start_dt, stop_dt, step, cmd.args[5], cmd.args[6])
+                self.passivate(CommandEventId.CMD_PREPARE_PREDICTION.value)
             if cmd.cmd == CommandEventId.CMD_RUN_PREDICTION and cmd.args[0] == self.parent.name and cmd.args[1] == self.name:
                 logger.info(f"Fog server received command to generate prediction with arguments: {cmd.args[0:-1]} ...")
                 start_dt: datetime = datetime.datetime.strptime(cmd.args[2], "%Y-%m-%d %H:%M:%S")
                 stop_dt: datetime = datetime.datetime.strptime(cmd.args[3], "%Y-%m-%d %H:%M:%S")
                 now_dt: datetime = datetime.datetime.strptime(cmd.args[4], "%Y-%m-%d %H:%M:%S")
                 n_times: int = int(cmd.args[5])
-                self.run_prediction(cmd.args[0], cmd.args[1], start_dt, stop_dt, now_dt, n_times)
-                self.passivate()
+                self.run_prediction(cmd.args[0], cmd.args[1], start_dt, stop_dt, now_dt, n_times, cmd.args[6], cmd.args[7])
+                self.passivate(CommandEventId.CMD_RUN_PREDICTION.value)
             if cmd.cmd == CommandEventId.CMD_FIX_OUTLIERS and cmd.args[0] == self.parent.name and cmd.args[1] == self.name:
                 logger.info(f"Fog server received command to fix outliers with arguments: {cmd.args[0:-1]} ...")
                 sensor_name: str = cmd.args[2]
                 start_dt: datetime = datetime.datetime.strptime(cmd.args[3], "%Y-%m-%d %H:%M:%S")
                 stop_dt: datetime = datetime.datetime.strptime(cmd.args[4], "%Y-%m-%d %H:%M:%S")
                 method: str = cmd.args[5]
-                self.fix_outliers(cmd.args[0], cmd.args[1], sensor_name, start_dt, stop_dt, method)
-                self.passivate()
+                self.fix_outliers(cmd.args[0], cmd.args[1], sensor_name, start_dt, stop_dt, method, cmd.args[6])
+                self.passivate(CommandEventId.CMD_FIX_OUTLIERS.value)
+        if self.phase == CommandEventId.CMD_ACTIVATE_SENSORS.value:
+            for sensor_name in self.sensor_names:
+                if self.iports[sensor_name].empty() is False:
+                    event: SensorEvent = self.iports[sensor_name].get()
+                    new_row = self.tables[sensor_name].row
+                    new_row['timestamp'] = event.timestamp
+                    new_row['radiation'] = event.radiation
+                    new_row.append()
 
-    def generate_h5_file(self, data_center_name: str, farm_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, step: int):
+    def generate_h5_file(self, data_center_name: str, farm_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, step: int, input_filename: str, output_filename: str):
         """Generate h5 file with the data for the prediction."""
         # Initialize variables
         current_dt = start_dt
         current_day = -1
-        sensor_files = {}
+        sensor_rows = {}
         current_data = {}
         table = []
-        # Open files        
+        base_folder = os.path.join('data', 'output', data_center_name, farm_name)
+        h5_input = tb.open_file(os.path.join(base_folder, input_filename), 'r')
+        # Initialize the row iterators        
         for sensor_name in self.sensor_names:
-            sensor_files[sensor_name] = open(os.path.join(self.base_output_folder,f"{sensor_name}.csv"), mode='r')
-            # Read the header
-            sensor_files[sensor_name].readline()
+            sensor_table = h5_input.get_node(f"/{data_center_name}/{farm_name}/{sensor_name}")
+            sensor_rows[sensor_name] = next(sensor_table.where(f"(timestamp >= {start_dt.timestamp()}) & (timestamp <= {stop_dt.timestamp()})"))
             current_data[sensor_name] = 0
-        # Prepare the H5 file
-        h5 = tb.open_file(os.path.join(self.base_output_folder,'prediction-input.h5'), 'w')
-        group_farm = h5.create_group("/", data_center_name)
-        group_farm = h5.create_group(group_farm, farm_name)
+        # Prepare the H5 output file
+        h5_output = tb.open_file(os.path.join(base_folder, output_filename), 'w')
+        group_farm = h5_output.create_group("/", data_center_name)
+        group_farm = h5_output.create_group(group_farm, farm_name)
         # Write latitudes and longitudes        
-        self.h5_add_lat_lon(h5, group_farm)
+        self.h5_add_lat_lon(group_farm)
         # Write means and stdevs
-        self.h5_add_means_stdevs(h5, group_farm)
+        self.h5_add_means_stdevs(group_farm)
         # Loop over the time
         while current_dt < stop_dt:
             aux_day = current_dt.day
             if aux_day != current_day:
                 if current_day != -1:
                     # Save the table
-                    h5.create_array(group_farm, current_dt.strftime("%Y-%m-%d"), table)
+                    h5_output.create_array(group_farm, current_dt.strftime("%Y-%m-%d"), table)
                     table = []
                 current_day = aux_day
             # Read data from files
             for sensor_name in self.sensor_names:
-                sensor_dt = datetime.datetime.strptime("1900-01-01 10:00:00", "%Y-%m-%d %H:%M:%S")
-                while sensor_dt<current_dt:
-                    line = sensor_files[sensor_name].readline()
-                    if line != '':
-                        sensor_dt = datetime.datetime.strptime(line.split(',')[1], "%Y-%m-%d %H:%M:%S")
-                    else:
-                        break
-                if line != '':
-                    current_data[sensor_name] = float(line.split(',')[2])
+                sensor_dt = sensor_rows[sensor_name]['timestamp']
+                while sensor_dt<current_dt.timestamp():
+                    next(sensor_rows[sensor_name])
+                    sensor_dt = sensor_rows[sensor_name]['timestamp']
+                current_data[sensor_name] = sensor_rows[sensor_name]['radiation']
             # Prepare the new row
             row: list = []
             row.append(current_dt.timestamp())
@@ -132,23 +154,23 @@ class FarmServer(Atomic):
 
         # Check the last table
         if len(table) > 0:
-            h5.create_array(group_farm, current_dt.strftime("%Y-%m-%d"), table)
+            h5_output.create_array(group_farm, current_dt.strftime("%Y-%m-%d"), table)
             table = []
         # Close files
-        for sensor_name in self.sensor_names:
-            sensor_files[sensor_name].close()
-        # Close the H5 file
-        h5.close()
+        h5_input.close()
+        h5_output.close()
 
-    def run_prediction(self, data_center_name: str, farm_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, now_dt: datetime.datetime, n_times):
-        forecaster = Deployer(models_folder=f'{self.base_input_folder}/models', input_path=f'{self.base_output_folder}/prediction-input.h5', output_path=f'{self.base_output_folder}/prediction-output.h5', server='Oahu', first_hour=start_dt.strftime('%H:%M:%S'), last_hour=stop_dt.strftime('%H:%M:%S'))
+    def run_prediction(self, data_center_name: str, farm_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, now_dt: datetime.datetime, n_times, input_filename: str, output_filename: str):
+        models_folder = os.path.join('data', 'input', farm_name, 'models')
+        baseop_folder = os.path.join('data', 'output', data_center_name, farm_name)
+        forecaster = Deployer(models_folder=models_folder, input_path=f'{baseop_folder}/{input_filename}', output_path=f'{baseop_folder}/{output_filename}', server=farm_name, first_hour=start_dt.strftime('%H:%M:%S'), last_hour=stop_dt.strftime('%H:%M:%S'))
         tic = time.time() 
         forecaster.forecast(now=now_dt, reps=n_times)
         print('Prediction successful! it took {} in total'.format(time.strftime('%H:%M:%S', time.gmtime(time.time() - tic))))
-        report: FarmReportService = FarmReportService(data_center_name, farm_name, self.base_output_folder)
+        report: FarmReportService = FarmReportService(data_center_name, farm_name, baseop_folder)
         report.generate_prediction_report(now_dt)
 
-    def h5_add_lat_lon(self, h5, group_farm):
+    def h5_add_lat_lon(self, group_farm):
         # node_farm = h5.get_node(group_farm)
         columns = ["time_since_epoch"]
         sc_lat_map = {}
@@ -161,7 +183,7 @@ class FarmServer(Atomic):
         group_farm._v_attrs["sc_lon_map"] = sc_lon_map
         group_farm._v_attrs["columns"] = columns
 
-    def h5_add_means_stdevs(self, h5, group_farm):
+    def h5_add_means_stdevs(self, group_farm):
         sc_mean_map = {}
         sc_std_map = {}
         for i in range(len(self.sensor_names)):
@@ -170,21 +192,22 @@ class FarmServer(Atomic):
         group_farm._v_attrs["sc_mean_map"] = sc_mean_map
         group_farm._v_attrs["sc_std_map"] = sc_std_map
 
-    def fix_outliers(self, data_center_name: str, farm_name: str, sensor_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, method: str):
-        logger.info("Reading CSV file...")
-        df = pd.read_csv(f'{self.base_output_folder}/{sensor_name}.csv')
+    def fix_outliers(self, data_center_name: str, farm_name: str, sensor_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, method: str, input_output_filename: str):
+        logger.info("Reading H5 data ...")
+        base_folder = os.path.join('data', 'output', data_center_name, farm_name)
+        h5 = tb.open_file(os.path.join(base_folder, input_output_filename), 'a')
+        sensor_table = h5.get_node(f'/{data_center_name}/{farm_name}/{sensor_name}')
+        # Continue here: transform the table to dataframe
+        df = pd.DataFrame.from_records(sensor_table.read_where(f"(timestamp>={start_dt.timestamp()}) & (timestamp<{stop_dt.timestamp()})"))
         # Convert the date column to datetime
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        # Filter by date column
-        df = df[(df['timestamp'] >= start_dt) & (df['timestamp'] < stop_dt)]
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
         # Save the figure:
         fig1 = px.line(df, x="timestamp", y="radiation")
-        fig1.write_html(f'{self.base_output_folder}/fig_outliers-1.html')
+        fig1.write_html(f'{base_folder}/fig_outliers-1.html')
 
         logger.info("Preparing the model ...")
         # Change column names
         data = df.rename(columns={"timestamp": "ds", "radiation": "y"})
-        data.drop(labels=['source'], axis=1, inplace=True)
         model = Prophet(interval_width=0.99)
         model.fit(data)
 
@@ -192,7 +215,7 @@ class FarmServer(Atomic):
         forecast = model.predict(data)
         # Visualize the forecast
         fig2 = model.plot(forecast, figsize=(12,8)); # Add semi-colon to remove the duplicated chart
-        fig2.savefig(f'{self.base_output_folder}/fig_outliers-2.png', dpi=400, bbox_inches='tight')
+        fig2.savefig(f'{base_folder}/fig_outliers-2.png', dpi=400, bbox_inches='tight')
 
         # Merge actual and predicted values
         performance = pd.merge(data, forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']], on='ds')
@@ -211,20 +234,21 @@ class FarmServer(Atomic):
         ax = sns.scatterplot(x='ds', y='y', data=performance, hue='anomaly')
         sns.lineplot(x='ds', y='yhat', data=performance, color='black', ax=ax)
         # Save the figure:
-        fig3.savefig(f'{self.base_output_folder}/fig_outliers-3.png', dpi=400, bbox_inches='tight')
+        fig3.savefig(f'{base_folder}/fig_outliers-3.png', dpi=400, bbox_inches='tight')
         # Compute fixed values
         df_fixed = df.copy()
         df_fixed.reset_index(inplace=True)
         idx = performance.index[performance['anomaly'] == 1].tolist()
         for id in idx:
             df_fixed.loc[id, 'radiation'] = np.nan
-        df_fixed['radiation'].interpolate(method='linear', inplace=True)
+        df_fixed['radiation'].interpolate(method=method, inplace=True)
         fig4 = plt.figure(figsize=(12,8))
         ax = sns.scatterplot(x='timestamp', y='radiation', data=df, label='Original')
         sns.lineplot(x='timestamp', y='radiation', data=df_fixed, color='orange', label='Fixed', ax=ax)
-        fig4.savefig(f'{self.base_output_folder}/fig_outliers-4.png', dpi=400, bbox_inches='tight')
+        fig4.savefig(f'{base_folder}/fig_outliers-4.png', dpi=400, bbox_inches='tight')
         # Save the new CSV file
-        df_fixed.to_csv(f'{self.base_output_folder}/{sensor_name}_fixed.csv', index=False)
+        df_fixed.to_csv(f'{base_folder}/{sensor_name}_fixed.csv', index=False)
+        h5.close()
         # Generate the report
-        report: FarmReportService = FarmReportService(data_center_name, farm_name, self.base_output_folder)
+        report: FarmReportService = FarmReportService(data_center_name, farm_name, base_folder)
         report.generate_outliers_report()
