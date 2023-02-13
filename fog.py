@@ -195,7 +195,7 @@ class FarmServer(Atomic):
     def fix_outliers(self, data_center_name: str, farm_name: str, sensor_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, method: str, input_output_filename: str):
         logger.info("Reading H5 data ...")
         base_folder = os.path.join('data', 'output', data_center_name, farm_name)
-        h5 = tb.open_file(os.path.join(base_folder, input_output_filename), 'a')
+        h5 = tb.open_file(os.path.join(base_folder, input_output_filename), 'r')
         sensor_table = h5.get_node(f'/{data_center_name}/{farm_name}/{sensor_name}')
         # Continue here: transform the table to dataframe
         df = pd.DataFrame.from_records(sensor_table.read_where(f"(timestamp>={start_dt.timestamp()}) & (timestamp<{stop_dt.timestamp()})"))
