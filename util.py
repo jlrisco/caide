@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
+import plotly.express as px
 import tables as tb
 from enum import Enum
 from xdevs import get_logger
@@ -226,6 +227,15 @@ class FarmReportService:
         self.farm_name = farm_name
         self.base_folder = base_folder
 
+    def generate_introduction_report(self, sensor_names, sensor_latitudes, sensor_longitudes):
+        logger.debug("FarmReportService::generate_introduction_report()")
+        df = pd.DataFrame(list(zip(sensor_names, sensor_latitudes, sensor_longitudes)), columns =['name', 'latitude', 'longitude'])
+        fig = px.scatter_mapbox(df, lat=df.latitude, lon=df.longitude, hover_name="name", zoom=12, mapbox_style="stamen-terrain")
+        fig.write_html(self.base_folder + "/fig_intro-1.html")
+        f = open(f'{self.base_folder}/farm_introduction_report.html', 'w')
+        f.write(self.prepare_introduction_html_code())
+        f.close()
+
     def generate_prediction_report(self, now_dt):
         logger.debug("FarmReportService::generate_prediction_report()")
         self.prepare_prediction_data(now_dt)
@@ -363,6 +373,22 @@ class FarmReportService:
                     <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit ...</p>
                     <p style="text-align:center;">
                         <img src="fig_outliers-4.png" width="70%" alt="ap1 data">
+                    </p>
+                </body>
+            </html>'''
+        return html
+
+    def prepare_introduction_html_code(self):
+        html = f'''
+            <html>
+                <head>
+                    <title>Introduction Report</title>
+                </head>
+                <body>
+                    <h1>{self.farm_name} sensors location</h1>
+                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit ...</p>
+                    <p style="text-align:center;">
+                        <iframe id="intro-figure1" scrolling="no" style="border:none;" seamless="seamless" src="fig_intro-1.html" height="525" width="100%"></iframe>
                     </p>
                 </body>
             </html>'''

@@ -72,6 +72,8 @@ class FarmServer(Atomic):
                 super().passivate(CommandEventId.CMD_ACTIVATE_SENSORS.value)
             if cmd.cmd == CommandEventId.CMD_PASSIVATE_SENSORS and cmd.args[0] == self.parent.name and cmd.args[1] == self.name:
                 self.db.close()
+                report: FarmReportService = FarmReportService(self.parent.name, self.name, os.path.join(self.root_data_folder, 'output', self.parent.name, self.name))
+                report.generate_introduction_report(self.sensor_names, self.sensor_latitudes, self.sensor_longitudes)
                 super().passivate(CommandEventId.CMD_PASSIVATE_SENSORS.value)
             if cmd.cmd == CommandEventId.CMD_PREPARE_PREDICTION and cmd.args[0] == self.parent.name and cmd.args[1] == self.name:
                 logger.info(f"Fog server received command to generate the H5 file with arguments: {cmd.args[0:-1]} ...")
