@@ -60,7 +60,7 @@ class FarmServer(Atomic):
             cmd: CommandEvent = self.iport_cmd.get()
             if cmd.cmd == CommandEventId.CMD_ACTIVATE_SENSORS and cmd.args[0] == self.parent.name and cmd.args[1] == self.name:
                 base_folder = os.path.join(self.root_data_folder, 'output', self.parent.name, self.name)
-                os.makedirs(os.path.dirname(base_folder), exist_ok=True)
+                os.makedirs(base_folder, exist_ok=True)
                 # TODO: For the moment, we do not allow commands between the activation and the passivation of the sensors.
                 # This is a serious limitation.
                 self.db = tb.open_file(os.path.join(base_folder, cmd.args[2]), 'w')
