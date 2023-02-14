@@ -21,13 +21,14 @@ logger = get_logger(__name__, logging.DEBUG)
 class FarmServer(Atomic):
     """Simulated farm server"""
 
-    def __init__(self, name: str, sensor_names: list, sensor_latitudes: list, sensor_longitudes: list, sensor_means: list, sensor_stdevs: list):
+    def __init__(self, name: str, sensor_names: list, sensor_latitudes: list, sensor_longitudes: list, sensor_means: list, sensor_stdevs: list, root_data_folder: str):
         super().__init__(name)
         self.sensor_names = sensor_names
         self.sensor_latitudes = sensor_latitudes
         self.sensor_longitudes = sensor_longitudes
         self.sensor_means = sensor_means
         self.sensor_stdevs = sensor_stdevs
+        self.root_data_folder = root_data_folder
         # Ports
         self.iport_cmd = Port(CommandEvent, "cmd")
         self.add_in_port(self.iport_cmd)
@@ -58,7 +59,7 @@ class FarmServer(Atomic):
         if self.iport_cmd.empty() is False:
             cmd: CommandEvent = self.iport_cmd.get()
             if cmd.cmd == CommandEventId.CMD_ACTIVATE_SENSORS and cmd.args[0] == self.parent.name and cmd.args[1] == self.name:
-                base_folder = os.path.join('data', 'output', self.parent.name, self.name)
+                base_folder = os.path.join(self.root_data_folder, 'output', self.parent.name, self.name)
                 os.makedirs(os.path.dirname(base_folder), exist_ok=True)
                 # TODO: For the moment, we do not allow commands between the activation and the passivation of the sensors.
                 # This is a serious limitation.
@@ -112,7 +113,7 @@ class FarmServer(Atomic):
         sensor_rows = {}
         current_data = {}
         table = []
-        base_folder = os.path.join('data', 'output', data_center_name, farm_name)
+        base_folder = os.path.join(self.root_data_folder, 'output', data_center_name, farm_name)
         h5_input = tb.open_file(os.path.join(base_folder, input_filename), 'r')
         # Initialize the row iterators        
         for sensor_name in self.sensor_names:
@@ -161,8 +162,8 @@ class FarmServer(Atomic):
         h5_output.close()
 
     def run_prediction(self, data_center_name: str, farm_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, now_dt: datetime.datetime, n_times, input_filename: str, output_filename: str):
-        models_folder = os.path.join('data', 'input', farm_name, 'models')
-        baseop_folder = os.path.join('data', 'output', data_center_name, farm_name)
+        models_folder = os.path.join(self.root_data_folder, 'input', farm_name, 'models')
+        baseop_folder = os.path.join(self.root_data_folder, 'output', data_center_name, farm_name)
         forecaster = Deployer(models_folder=models_folder, input_path=f'{baseop_folder}/{input_filename}', output_path=f'{baseop_folder}/{output_filename}', server=farm_name, first_hour=start_dt.strftime('%H:%M:%S'), last_hour=stop_dt.strftime('%H:%M:%S'))
         tic = time.time() 
         forecaster.forecast(now=now_dt, reps=n_times)
@@ -194,7 +195,7 @@ class FarmServer(Atomic):
 
     def fix_outliers(self, data_center_name: str, farm_name: str, sensor_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, method: str, input_output_filename: str):
         logger.info("Reading H5 data ...")
-        base_folder = os.path.join('data', 'output', data_center_name, farm_name)
+        base_folder = os.path.join(self.root_data_folder, 'output', data_center_name, farm_name)
         h5 = tb.open_file(os.path.join(base_folder, input_output_filename), 'r')
         sensor_table = h5.get_node(f'/{data_center_name}/{farm_name}/{sensor_name}')
         # Continue here: transform the table to dataframe
