@@ -28,11 +28,11 @@ h5file.create_array(farm_group, 'sensor_latitudes', np.array(sensor_latitudes), 
 h5file.create_array(farm_group, 'sensor_longitudes', np.array(sensor_longitudes), 'Sensor longitudes')
 h5file.close()
 
-# Let's read some rows from the H5 output file
-h5file = tb.open_file('data/output/DataCenter/Oahu/prediction-input.h5', mode='r')
-table = h5file.get_node('/DataCenter/Oahu', '2010-03-22')
-row = table[-1]
+# Let's read some rows from the H5 file
+h5file = tb.open_file('data/input/Almeria/sensors_data.h5', mode='r')
+table = h5file.get_node('/data', 'sensor1')
+row = table[0]
 print(datetime.datetime.fromtimestamp(row[0]))
-row = table[-2]
+row = table[-1]
 print(datetime.datetime.fromtimestamp(row[0]))
 h5file.close()
