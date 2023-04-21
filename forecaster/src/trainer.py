@@ -36,15 +36,15 @@ class Trainer():
                     |model_name.h5
     '''
     
-    def __init__(self, models_folder, input_path, output_path, time_gran='01m', #dset='stand_map10',
+    def __init__(self,  input_path, time_gran='01m', models_folder='../models',#dset='stand_map10',
                  server='FogServer01', kind='10x10', offset=0.001, scaling='stand', interp='nearest', 
                  n_x=10, forecast_horizon=[1, 11, 31, 61], first_hour = '07:30:00', last_hour='17:30:00',
-                 mod_name = 'stand_map10_ts10_convLstm0', testing = False                
+                 mod_name = 'stand_map10_ts10_convLstm0', testing = False             
                 ):
         # For files and paths
         self.models_folder = models_folder
         self.input_path = input_path
-        self.output_path = output_path
+        # self.output_path = output_path
         self.time_gran = time_gran
         self.mod_name = mod_name
         # self.other_path = os.path.join(self.work_path, 'data', site, 'other')
@@ -154,7 +154,6 @@ class Trainer():
     
     def train(self, beg_date, end_date, epochs=30, save_maps=False):
         model = self.models.model("convLstm0")
-        
         new_days = pd.date_range(beg_date,end_date)
 
         # 1) Read new data for each sensor (consider that 1st column is time_since_epoch)
@@ -171,7 +170,7 @@ class Trainer():
             # print(np.nanstd(data[...,idx]),std_map[col])
 
         # 3) Interpolate to mesh-grid (and probably save it to a h5)
-        grid = self.interpolate(data=new_data)
+        grid = self.interpolate(data=new_data, now=pd.to_datetime(end_date))
         # grid = grid.reshape(1,*grid.shape)
 
         bs = grid.shape[0] - (self.n_x + self.forecast_horizon[-1]) + 1
@@ -187,10 +186,10 @@ class Trainer():
             idx_y = [idx + self.n_x + horizon - 1 for idx in np.arange(bs)]
             Y[:, id_h, :] = grid[idx_y]
             
-        log_file = os.path.join(self.models_folder, self.mod_name + '_logs.txt') 
+        log_file = os.path.join(self.models_folder, self.mod_name + '_updated({:02}-{:02}-{:02}).h5'.format(end_date.year,end_date.month,end_date.day) + '_logs.txt') 
         model.fit(x=X, y=Y,
                   epochs=epochs,
-                  callbacks=[trainUtils.HistoryCallback(mod_name=model.mod_name,
+                  callbacks=[trainUtils.HistoryCallback(mod_name=self.mod_name + '_updated({:02}-{:02}-{:02}).h5'.format(end_date.year,end_date.month,end_date.day),
                                              log_file=log_file,
                                              )],
                   use_multiprocessing=True, workers=0)
@@ -198,8 +197,8 @@ class Trainer():
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Train the model with new available data')
-    parser.add_argument('model', help='Model to retrain (eg: stand_map10_ts10_convLstm0)')
+    parser = argparse.ArgumentParser(description='Train a model with new available data')
+    # parser.add_argument('model', help='Model to retrain (eg: stand_map10_ts10_convLstm0)')
     parser.add_argument('input', help='Input data file (h5 extension)')
     parser.add_argument('beg_date', help='First day of data used for training (format: yyyy/mm/day)')
     parser.add_argument('end_date', help='Last day of data used for training (format: yyyy/mm/day)')
@@ -211,7 +210,8 @@ if __name__ == "__main__":
     beg, end = pd.to_datetime(args.beg_date),pd.to_datetime(args.end_date)
 
     tic = time.time() 
-    t = Trainer(work_path=args.work_path, dataset=args.input, mod_name=args.model)
-    # d.forecast(now=now, reps=args.npreds)
+    t = Trainer(input_path=args.input)
     t.train(beg,end,int(args.epochs))
     print('Training successful! it took {} in total'.format(time.strftime('%H:%M:%S', time.gmtime(time.time() - tic))))
+
+
