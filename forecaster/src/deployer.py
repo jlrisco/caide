@@ -116,8 +116,8 @@ class Deployer():
 
         # display(df)
         for _ in range(len(self.sensors)):
-            sensor = df.min().astype(float).idxmin()
-            point_index = df.min(axis=1).idxmin()
+            sensor = df.min(axis=0).astype(float).idxmin()
+            point_index = df.min(axis=1).astype(float).idxmin()
             pairs[sensor] = point_index
             df.drop(sensor,axis=1, inplace=True)
             df.drop(point_index,axis=0, inplace=True)
