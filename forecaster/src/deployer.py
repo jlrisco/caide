@@ -225,12 +225,13 @@ if __name__ == "__main__":
     parser.add_argument('-wk','--work_path', default='..', help='Relative route to main directory')
     parser.add_argument('-fh','--first_hour', default='07:30:00', help='First hour of input data (format: hh:mm:ss)')
     parser.add_argument('-lh','--last_hour', default='17:30:00', help='Last hour of input data (format: hh:mm:ss)')
+    parser.add_argument('-m','--model_name', default='stand_map10_ts10_convLstm0', help='Name of the model used for the inference')
     args = parser.parse_args()
     now = pd.to_datetime(args.now[0]+' '+args.now[1])
     # now = pd.to_datetime()
 
     tic = time.time() 
     d = Deployer(work_path=args.work_path, dataset=args.input, server=args.server, 
-                 first_hour=args.first_hour, last_hour=args.last_hour)
+                 first_hour=args.first_hour, last_hour=args.last_hour, mod_name=args.model_name)
     d.forecast(now=now, reps=args.npreds)
     print('Prediction successful! it took {} in total'.format(time.strftime('%H:%M:%S', time.gmtime(time.time() - tic))))
