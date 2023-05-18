@@ -215,6 +215,11 @@ class FarmServer(Atomic):
         model.fit(data)
 
         logger.info("Making prediction ...")
+        """
+        Recommendation from a journal paper (for consideration in the future):
+        Generate Future Dates: To detect outliers, you need to generate a set of future dates for which you want to make predictions. 
+        Use the make_future_dataframe method on the model object to create a new DataFrame with the future dates.
+        """
         forecast = model.predict(data)
         # Visualize the forecast
         fig2 = model.plot(forecast, figsize=(12,8)); # Add semi-colon to remove the duplicated chart
