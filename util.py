@@ -230,7 +230,7 @@ class FarmReportService:
     def generate_introduction_report(self, sensor_names, sensor_latitudes, sensor_longitudes):
         logger.debug("FarmReportService::generate_introduction_report()")
         df = pd.DataFrame(list(zip(sensor_names, sensor_latitudes, sensor_longitudes)), columns =['name', 'latitude', 'longitude'])
-        fig = px.scatter_mapbox(df, lat=df.latitude, lon=df.longitude, hover_name="name", zoom=12, mapbox_style="stamen-terrain")
+        fig = px.scatter_mapbox(df, lat=df.latitude, lon=df.longitude, hover_name="name", text="name", zoom=12, mapbox_style="stamen-terrain")
         fig.write_html(self.base_folder + "/fig_intro-1.html")
         f = open(f'{self.base_folder}/farm_introduction_report.html', 'w')
         f.write(self.prepare_introduction_html_code())
