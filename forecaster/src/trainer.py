@@ -37,7 +37,7 @@ class Trainer():
     '''
     
     def __init__(self,  input_path, time_gran='01m', models_folder='../models',#dset='stand_map10',
-                 server='FogServer01', kind='10x10', offset=0.001, scaling='stand', interp='nearest', 
+                 server='DataCenter', kind='10x10', offset=0.001, scaling='stand', interp='nearest', 
                  n_x=10, forecast_horizon=[1, 11, 31, 61], first_hour = '07:30:00', last_hour='17:30:00',
                  mod_name = 'stand_map10_ts10_convLstm0_', testing = False             
                 ):
@@ -196,22 +196,27 @@ class Trainer():
         model.save(os.path.join(self.models_folder, self.mod_name + '_updated({:02}-{:02}-{:02}).h5'.format(end_date.year,end_date.month,end_date.day)))
 
 
-# if __name__ == "__main__":
-#     parser = argparse.ArgumentParser(description='Train the model with new available data')
-#     # parser.add_argument('model', help='Model to retrain (eg: stand_map10_ts10_convLstm0)')
-#     parser.add_argument('input', help='Input data file (h5 extension)')
-#     parser.add_argument('beg_date', help='First day of data used for training (format: yyyy/mm/day)')
-#     parser.add_argument('end_date', help='Last day of data used for training (format: yyyy/mm/day)')
-#     parser.add_argument('-epochs', default=30, help='Number of epochs')
-#     parser.add_argument('-wk','--work_path', default='..', help='Relative route to main directory')
-#     args = parser.parse_args()
-#     # now = pd.to_datetime(args.now[0]+' '+args.now[1])
-#     # now = pd.to_datetime()
-#     beg, end = pd.to_datetime(args.beg_date),pd.to_datetime(args.end_date)
-
-#     tic = time.time() 
-#     t = Trainer(input_path=args.input,output_path='')
-#     t.train(beg,end,int(args.epochs))
-#     print('Training successful! it took {} in total'.format(time.strftime('%H:%M:%S', time.gmtime(time.time() - tic))))
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Train the model with new available data')
+    # parser.add_argument('model', help='Model to retrain (eg: stand_map10_ts10_convLstm0)')
+    parser.add_argument('input', help='Input data file (h5 extension)')
+    parser.add_argument('beg_date', help='First day of data used for training (format: yyyy/mm/day)')
+    parser.add_argument('end_date', help='Last day of data used for training (format: yyyy/mm/day)')
+    parser.add_argument('-epochs', default=30, help='Number of epochs')
+    parser.add_argument('-wk','--work_path', default='..', help='Relative route to main directory')
+    # args = parser.parse_args()
+    args = {}
+    args['input'] = '../data/input/Oahu/oahu.h5'
+    args['beg_date'] = '2010/03/22'
+    args['end_date'] = '2010/03/23'
+    args['-epochs'] = '30'
+    args['-wk'] = '..'
+    # now = pd.to_datetime(args.now[0]+' '+args.now[1])
+    # now = pd.to_datetime()
+    beg, end = pd.to_datetime(args.beg_date),pd.to_datetime(args.end_date)
+    tic = time.time() 
+    t = Trainer(input_path=args.input,output_path='')
+    t.train(beg,end,int(args.epochs))
+    print('Training successful! it took {} in total'.format(time.strftime('%H:%M:%S', time.gmtime(time.time() - tic))))
 
 
