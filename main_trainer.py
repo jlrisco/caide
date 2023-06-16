@@ -1,8 +1,7 @@
 import datetime
+import numpy as np
 import os
-import pandas as pd
 import tables as tb
-import time
 from forecaster.src.trainer import Trainer
 
 
@@ -31,7 +30,7 @@ def h5_add_means_stdevs(group_farm, sensor_names, sensor_means, sensor_stdevs):
 def generate_h5_file(data_center_name: str, farm_name: str, sensor_names, sensor_lat, sensor_lon, start_dt: datetime.datetime, stop_dt: datetime.datetime, step: int, input_filename: str, output_filename: str):
     """Generate h5 file with the data for the training."""
     # Initialize variables
-    current_dt = start_dt
+    current_dt = []
     current_day = -1
     sensor_rows = {}
     current_data = {}
@@ -41,7 +40,13 @@ def generate_h5_file(data_center_name: str, farm_name: str, sensor_names, sensor
     # Initialize the row iterators        
     for sensor_name in sensor_names:
         sensor_table = h5_input.get_node(f"/{data_center_name}/{farm_name}/{sensor_name}")
-        sensor_rows[sensor_name] = next(sensor_table.where(f"(timestamp >= {start_dt.timestamp()}) & (timestamp <= {stop_dt.timestamp()})"))
+        try:
+            sensor_rows[sensor_name] = next(sensor_table.where(f"(timestamp >= {start_dt.timestamp()}) & (timestamp <= {stop_dt.timestamp()})"))
+        except StopIteration:
+            h5_input.close()
+            print(f"No data for {farm_name}/{sensor_name} in {input_filename}")
+            return
+        current_dt.append(sensor_rows[sensor_name]['timestamp'])
         current_data[sensor_name] = 0
     # Prepare the H5 output file
     h5_output = tb.open_file(os.path.join(base_folder, output_filename), 'w')
@@ -52,67 +57,38 @@ def generate_h5_file(data_center_name: str, farm_name: str, sensor_names, sensor
     # Write means and stdevs
     h5_add_means_stdevs(group_farm, sensor_names, sensor_means, sensor_stdevs)
 
-
-
-
-
-
-
-    current_dt = sensor_rows[sensor_names[0]]['timestamp']
-    while current_dt < stop_dt:
-        # Read data from sensors:
-        row: list = []
-        row.append(current_dt.timestamp())
-        for sensor_name in sensor_names:
-            row.append(sensor_rows[sensor_name]['radiation'])
-        # Append the new row to the table
-        table.append(row)
-
-
-        # Save the table?
-        aux_day = current_dt.day
-        if aux_day != current_day:
-            if current_day != -1:
-                h5_output.create_array(group_farm, current_dt.strftime("%Y-%m-%d"), table)
-                table = []
-            current_day = aux_day
-        # Read data
-        for sensor_name in sensor_names:
-            try:
-                next(sensor_rows[sensor_name])
-            except StopIteration:
-                print(f"Sensor {sensor_name} has no data")
-                continue
-
-
-
-
-
-    # Loop over the time
-    while current_dt < stop_dt:
-        aux_day = current_dt.day
-        if aux_day != current_day:
-            if current_day != -1:
-                # Save the table
-                h5_output.create_array(group_farm, current_dt.strftime("%Y-%m-%d"), table)
-                table = []
-            current_day = aux_day
-        # Read data from files
-        for sensor_name in sensor_names:
-            sensor_dt = sensor_rows[sensor_name]['timestamp']
-            while sensor_dt<current_dt.timestamp():
-                next(sensor_rows[sensor_name])
+    try:
+        # Translate from timestamp to datetime
+        current_dt = datetime.datetime.fromtimestamp(np.max(current_dt))
+        # Loop over the time
+        while current_dt < stop_dt:
+            aux_day = current_dt.day
+            if aux_day != current_day:
+                if current_day != -1:
+                    # Save the previous table
+                    h5_output.create_array(group_farm, current_dt.strftime("%Y-%m-%d"), table)
+                    table = []
+                current_day = aux_day
+            # Read data from files
+            for sensor_name in sensor_names:
                 sensor_dt = sensor_rows[sensor_name]['timestamp']
-            current_data[sensor_name] = sensor_rows[sensor_name]['radiation']
-        # Prepare the new row
-        row: list = []
-        row.append(current_dt.timestamp())
-        for sensor_name in sensor_names:
-            row.append(current_data[sensor_name])
-        # Append the new row to the table
-        table.append(row)
-        current_dt += datetime.timedelta(seconds=step)
-    # Check the last table
+                while sensor_dt<current_dt.timestamp():
+                    next(sensor_rows[sensor_name])
+                    sensor_dt = sensor_rows[sensor_name]['timestamp']
+                current_data[sensor_name] = sensor_rows[sensor_name]['radiation']
+            # Prepare the new row
+            row: list = []
+            row.append(current_dt.timestamp())
+            for sensor_name in sensor_names:
+                row.append(current_data[sensor_name])
+            # Append the new row to the table
+            table.append(row)
+            current_dt += datetime.timedelta(seconds=step)
+    except StopIteration:
+        print(f'No more data on {current_dt.strftime("%Y-%m-%d %H:%M:%S")} for sensor {farm_name}/{sensor_name} in {input_filename}')        
+        h5_input.close()
+        h5_output.close()
+        return
     if len(table) > 0:
         h5_output.create_array(group_farm, current_dt.strftime("%Y-%m-%d"), table)
         table = []
@@ -147,7 +123,7 @@ if __name__ == "__main__":
                       kind='10x10', offset=0.001, scaling='stand', interp='nearest', 
                       n_x=10, forecast_horizon=[1, 11, 31, 61], first_hour = '07:30:00', last_hour='17:30:00',
                       mod_name = 'stand_map10_ts10_convLstm0_', testing = False)
-    trainer.train(start_dt,stop_dt)
+    trainer.train(datetime.datetime(2010, 3, 20),datetime.datetime(2010, 3, 22))
 """
     h5_filepath = 'data/output/DataCenter/Oahu/oahu_tmp.h5'
     models_folder = 'data/output'

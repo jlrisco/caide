@@ -1,3 +1,4 @@
+import tensorflow as tf
 from keras import layers, models, optimizers, utils
 
 
@@ -162,7 +163,7 @@ class Models():
         # Reshape to add dimension: n_channels
         model.add(layers.Reshape((self.n_x, *self.sensor_shape, 1),
                                  input_shape=(self.n_x, *self.sensor_shape)))
-        model.add(layers.convolutional_recurrent.ConvLSTM2D(filters=4, kernel_size=(2, 2),
+        model.add(tf.keras.layers.ConvLSTM2D(filters=4, kernel_size=(2, 2),
                                                             return_sequences=True))
         model.add(layers.Flatten())
         model.add(layers.Dense(32))
