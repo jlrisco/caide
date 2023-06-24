@@ -158,7 +158,8 @@ class Trainer():
 
         # 1) Read new data for each sensor (consider that 1st column is time_since_epoch)
         with tb.open_file(self.input_path, 'r') as h5_data:
-            shape = h5_data.root.DataCenter[self.server]['{:02}-{:02}-{:02}'.format(beg_date.year,beg_date.month,beg_date.day)][:,1:].shape
+            data = h5_data.root.DataCenter[self.server]['{:02}-{:02}-{:02}'.format(beg_date.year,beg_date.month,beg_date.day)][:,1:]
+            shape = np.array(data).shape
             new_data = np.empty((shape[0]*len(new_days), shape[1]))
             for idx,day in enumerate(new_days):
                 new_data[idx*shape[0]:(idx+1)*shape[0]] = h5_data.root.DataCenter[self.server]['{:02}-{:02}-{:02}'.format(day.year,day.month,day.day)][:, 1:]

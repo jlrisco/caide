@@ -8,6 +8,7 @@ import pandas as pd
 import plotly.express as px
 import tables as tb
 from enum import Enum
+from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error
 from xdevs import get_logger
 from xdevs.models import Atomic, Port
 
@@ -257,26 +258,33 @@ class FarmReportService:
             timestamps = h5_preds.root.DataCenter[self.farm_name][n]._v_children.keys()
             timestamps = list(timestamps)
             self.preds = np.empty((len(timestamps), n_sensors, n_horizons))
-            persistence = np.empty((len(timestamps), n_sensors, n_horizons))
             self.data = np.empty((len(timestamps), n_sensors))
+            data_table = h5_data.get_node(f"/{self.data_center_name}/{self.farm_name}/{n}")
+            data_idx = 0
             for idx, t in enumerate(timestamps):
                 self.preds[idx] = h5_preds.root.DataCenter[self.farm_name][n][t][:]
-                self.data[idx] = h5_data.root.DataCenter[self.farm_name][n][idx,1:]
-                for hh,h in enumerate([1,11,31,61]):
-                    if idx-h > 0: persistence[idx,:,hh] = h5_data.root.DataCenter[self.farm_name][n][idx-h,1:]
-                    else: persistence[idx,:,hh] = np.nan
+                while data_idx < len(data_table) and data_table[data_idx][0] < dt.datetime.strptime(f'{n}  {t}', '%Y-%m-%d %H:%M:%S').timestamp():
+                    data_idx += 1
+                self.data[idx] = h5_data.root.DataCenter[self.farm_name][n][data_idx,1:]
             self.sensors = h5_data.root.DataCenter[self.farm_name]._v_attrs['columns'][1:]
         self.times = [pd.to_datetime(d) for d in timestamps]
+        # Print some statistics:
+        # Sensor, horizon, MAE, MAPE
+        for s in range(n_sensors):
+            for h in range(n_horizons):
+                mae = mean_absolute_error(self.preds[:,s,h], self.data[:,s])
+                mape = mean_absolute_percentage_error(self.preds[:,s,h], self.data[:,s])
+                print(f'{self.sensors[s]};{h};{mae};{mape}')
 
     def prepare_prediction_figure1(self):
         sensor = 0
-        fig, ax = plt.subplots(2,2, figsize=(10,8),constrained_layout = True)
+        fig, ax = plt.subplots(2,2, figsize=(14,10),constrained_layout = True)
         fig.suptitle('Predictions and real values for sensor {} at each horizon'.format(self.sensors[sensor]), fontsize=16)
         for idx,h in enumerate(['1 min','11 min','31 min','61 min']):
             ax[idx//2,idx%2].set_title(label='h = {}'.format(h))
             ax[idx//2,idx%2].plot(self.times, self.data[:,sensor], label='simulated')
             ax[idx//2,idx%2].plot(self.times, self.preds[:,sensor,idx], label='predicted')
-            ax[idx//2,idx%2].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+            ax[idx//2,idx%2].xaxis.set_major_formatter(mdates.DateFormatter('%H'))
             ax[idx//2,idx%2].grid()
             ax[idx//2,idx%2].legend()
             ax[idx//2,idx%2].set_ylabel('GHI $[W/m^2]$')
@@ -293,7 +301,7 @@ class FarmReportService:
             ax[i//3,i%3].set_title(label=self.sensors[i])
             ax[i//3,i%3].plot(self.times, self.data[:,i], label='truth')
             ax[i//3,i%3].plot(self.times, self.preds[:,i,h], label='preds')
-            ax[i//3,i%3].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+            ax[i//3,i%3].xaxis.set_major_formatter(mdates.DateFormatter('%H'))
             ax[i//3,i%3].grid()
             ax[i//3,i%3].legend()
             ax[i//3,i%3].set_ylabel('GHI $[W/m^2]$')
@@ -308,7 +316,7 @@ class FarmReportService:
         for i in range(17):
             ax[i//3,i%3].set_title(label=self.sensors[i])
             ax[i//3,i%3].plot(self.times, np.abs(self.preds[:,i,h] - self.data[:,i]), label='preds - truth')
-            ax[i//3,i%3].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+            ax[i//3,i%3].xaxis.set_major_formatter(mdates.DateFormatter('%H'))
             ax[i//3,i%3].grid()
             ax[i//3,i%3].legend()
             ax[i//3,i%3].set_ylabel('GHI $[W/m^2]$')

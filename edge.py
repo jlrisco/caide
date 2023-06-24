@@ -61,8 +61,6 @@ class VirtualNode(Atomic):
             cmd: CommandEvent = self.iport_cmd.get()
             # TODO: Check if the command is for this sensor
             if cmd.cmd == CommandEventId.CMD_ACTIVATE_SENSORS and cmd.args[0] == self.dc_name and cmd.args[1] == self.farm_name:
-                if (self.name == "sensor1"):
-                    print("We are at Almeria")
                 start = cmd.date.timestamp()
                 self.current_day:int = -1
                 self.current_input = next(self.table.where(f'(timestamp >= {start})'))

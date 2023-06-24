@@ -21,13 +21,11 @@ logger = get_logger(__name__, logging.DEBUG)
 class FarmServer(Atomic):
     """Simulated farm server"""
 
-    def __init__(self, name: str, sensor_names: list, sensor_latitudes: list, sensor_longitudes: list, sensor_means: list, sensor_stdevs: list, root_data_folder: str):
+    def __init__(self, name: str, sensor_names: list, sensor_latitudes: list, sensor_longitudes: list, root_data_folder: str):
         super().__init__(name)
         self.sensor_names = sensor_names
         self.sensor_latitudes = sensor_latitudes
         self.sensor_longitudes = sensor_longitudes
-        self.sensor_means = sensor_means
-        self.sensor_stdevs = sensor_stdevs
         self.root_data_folder = root_data_folder
         # Ports
         self.iport_cmd = Port(CommandEvent, "cmd")
@@ -110,10 +108,11 @@ class FarmServer(Atomic):
     def generate_h5_file(self, data_center_name: str, farm_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, step: int, input_filename: str, output_filename: str):
         """Generate h5 file with the data for the prediction."""
         # Initialize variables
-        current_dt = start_dt
-        current_day = -1
+        current_dt = []
         sensor_rows = {}
         current_data = {}
+        sensor_means = []
+        sensor_stdevs = []
         table = []
         base_folder = os.path.join(self.root_data_folder, 'output', data_center_name, farm_name)
         h5_input = tb.open_file(os.path.join(base_folder, input_filename), 'r')
@@ -121,6 +120,10 @@ class FarmServer(Atomic):
         for sensor_name in self.sensor_names:
             sensor_table = h5_input.get_node(f"/{data_center_name}/{farm_name}/{sensor_name}")
             sensor_rows[sensor_name] = next(sensor_table.where(f"(timestamp >= {start_dt.timestamp()}) & (timestamp <= {stop_dt.timestamp()})"))
+            sensor_radiation = [row["radiation"] for row in sensor_table.where(f"(timestamp >= {start_dt.timestamp()}) & (timestamp <= {stop_dt.timestamp()})")]
+            sensor_means.append(np.mean(sensor_radiation))
+            sensor_stdevs.append(np.std(sensor_radiation))
+            current_dt.append(sensor_rows[sensor_name]['timestamp'])
             current_data[sensor_name] = 0
         # Prepare the H5 output file
         h5_output = tb.open_file(os.path.join(base_folder, output_filename), 'w')
@@ -129,31 +132,37 @@ class FarmServer(Atomic):
         # Write latitudes and longitudes        
         self.h5_add_lat_lon(group_farm)
         # Write means and stdevs
-        self.h5_add_means_stdevs(group_farm)
+        self.h5_add_means_stdevs(group_farm, sensor_means, sensor_stdevs)
         # Loop over the time
-        while current_dt < stop_dt:
-            aux_day = current_dt.day
-            if aux_day != current_day:
-                if current_day != -1:
-                    # Save the table
-                    h5_output.create_array(group_farm, current_dt.strftime("%Y-%m-%d"), table)
+        try:
+            # Translate from timestamp to datetime
+            current_dt = datetime.datetime.fromtimestamp(np.max(current_dt))
+            previous_dt = current_dt
+            while current_dt < stop_dt:
+                if current_dt.day != previous_dt.day:
+                    # Save the previous day
+                    h5_output.create_array(group_farm, previous_dt.strftime("%Y-%m-%d"), table)
                     table = []
-                current_day = aux_day
-            # Read data from files
-            for sensor_name in self.sensor_names:
-                sensor_dt = sensor_rows[sensor_name]['timestamp']
-                while sensor_dt<current_dt.timestamp():
-                    next(sensor_rows[sensor_name])
-                    sensor_dt = sensor_rows[sensor_name]['timestamp']
-                current_data[sensor_name] = sensor_rows[sensor_name]['radiation']
-            # Prepare the new row
-            row: list = []
-            row.append(current_dt.timestamp())
-            for sensor_name in self.sensor_names:
-                row.append(current_data[sensor_name])
-            # Append the new row to the table
-            table.append(row)
-            current_dt += datetime.timedelta(seconds=step)
+                    previous_dt = current_dt
+                # Read data from files
+                for sensor_name in self.sensor_names:
+                    sensor_ts = sensor_rows[sensor_name]['timestamp']
+                    sensor_dt = datetime.datetime.fromtimestamp(sensor_ts)
+                    while sensor_dt<current_dt:
+                        next(sensor_rows[sensor_name])
+                        sensor_ts = sensor_rows[sensor_name]['timestamp']
+                        sensor_dt = datetime.datetime.fromtimestamp(sensor_ts)
+                    current_data[sensor_name] = sensor_rows[sensor_name]['radiation']
+                # Prepare the new row
+                row: list = []
+                row.append(current_dt.timestamp())
+                for sensor_name in self.sensor_names:
+                    row.append(current_data[sensor_name])
+                # Append the new row to the table
+                table.append(row)
+                current_dt += datetime.timedelta(seconds=step)
+        except StopIteration:
+            print(f'No more data on {current_dt.strftime("%Y-%m-%d %H:%M:%S")} for sensor {farm_name}/{sensor_name} in {input_filename}')        
 
         # Check the last table
         if len(table) > 0:
@@ -186,12 +195,12 @@ class FarmServer(Atomic):
         group_farm._v_attrs["sc_lon_map"] = sc_lon_map
         group_farm._v_attrs["columns"] = columns
 
-    def h5_add_means_stdevs(self, group_farm):
+    def h5_add_means_stdevs(self, group_farm, sensor_means, sensor_stdevs):
         sc_mean_map = {}
         sc_std_map = {}
         for i in range(len(self.sensor_names)):
-            sc_mean_map[self.sensor_names[i]] = self.sensor_means[i]
-            sc_std_map[self.sensor_names[i]] = self.sensor_stdevs[i]
+            sc_mean_map[self.sensor_names[i]] = sensor_means[i]
+            sc_std_map[self.sensor_names[i]] = sensor_stdevs[i]
         group_farm._v_attrs["sc_mean_map"] = sc_mean_map
         group_farm._v_attrs["sc_std_map"] = sc_std_map
 

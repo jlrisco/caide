@@ -2,6 +2,7 @@ import datetime
 import numpy as np
 import os
 import tables as tb
+import time
 from forecaster.src.trainer import Trainer
 
 
@@ -31,9 +32,10 @@ def generate_h5_file(data_center_name: str, farm_name: str, sensor_names, sensor
     """Generate h5 file with the data for the training."""
     # Initialize variables
     current_dt = []
-    current_day = -1
     sensor_rows = {}
     current_data = {}
+    sensor_means = []
+    sensor_stdevs = []
     table = []
     base_folder = os.path.join('data', 'output', data_center_name, farm_name)
     h5_input = tb.open_file(os.path.join(base_folder, input_filename), 'r')
@@ -42,6 +44,9 @@ def generate_h5_file(data_center_name: str, farm_name: str, sensor_names, sensor
         sensor_table = h5_input.get_node(f"/{data_center_name}/{farm_name}/{sensor_name}")
         try:
             sensor_rows[sensor_name] = next(sensor_table.where(f"(timestamp >= {start_dt.timestamp()}) & (timestamp <= {stop_dt.timestamp()})"))
+            sensor_radiation = [row["radiation"] for row in sensor_table.where(f"(timestamp >= {start_dt.timestamp()}) & (timestamp <= {stop_dt.timestamp()})")]
+            sensor_means.append(np.mean(sensor_radiation))
+            sensor_stdevs.append(np.std(sensor_radiation))
         except StopIteration:
             h5_input.close()
             print(f"No data for {farm_name}/{sensor_name} in {input_filename}")
@@ -60,21 +65,23 @@ def generate_h5_file(data_center_name: str, farm_name: str, sensor_names, sensor
     try:
         # Translate from timestamp to datetime
         current_dt = datetime.datetime.fromtimestamp(np.max(current_dt))
+        previous_dt = current_dt
         # Loop over the time
         while current_dt < stop_dt:
-            aux_day = current_dt.day
-            if aux_day != current_day:
-                if current_day != -1:
-                    # Save the previous table
-                    h5_output.create_array(group_farm, current_dt.strftime("%Y-%m-%d"), table)
-                    table = []
-                current_day = aux_day
+            if current_dt.day != previous_dt.day:
+                # Save the previous day
+                print(f'Saving data for {previous_dt.strftime("%Y-%m-%d")}: {len(table)} rows')
+                h5_output.create_array(group_farm, previous_dt.strftime("%Y-%m-%d"), table)
+                table = []
+                previous_dt = current_dt
             # Read data from files
             for sensor_name in sensor_names:
-                sensor_dt = sensor_rows[sensor_name]['timestamp']
-                while sensor_dt<current_dt.timestamp():
+                sensor_ts = sensor_rows[sensor_name]['timestamp']
+                sensor_dt = datetime.datetime.fromtimestamp(sensor_ts)
+                while sensor_dt<current_dt:
                     next(sensor_rows[sensor_name])
-                    sensor_dt = sensor_rows[sensor_name]['timestamp']
+                    sensor_ts = sensor_rows[sensor_name]['timestamp']
+                    sensor_dt = datetime.datetime.fromtimestamp(sensor_ts)
                 current_data[sensor_name] = sensor_rows[sensor_name]['radiation']
             # Prepare the new row
             row: list = []
@@ -86,10 +93,8 @@ def generate_h5_file(data_center_name: str, farm_name: str, sensor_names, sensor
             current_dt += datetime.timedelta(seconds=step)
     except StopIteration:
         print(f'No more data on {current_dt.strftime("%Y-%m-%d %H:%M:%S")} for sensor {farm_name}/{sensor_name} in {input_filename}')        
-        h5_input.close()
-        h5_output.close()
-        return
-    if len(table) > 0:
+    if len(table) > 0: # Save the current date
+        print(f'Saving data for {current_dt.strftime("%Y-%m-%d")}: {len(table)} rows')
         h5_output.create_array(group_farm, current_dt.strftime("%Y-%m-%d"), table)
         table = []
     # Close files
@@ -106,14 +111,13 @@ if __name__ == "__main__":
     sensor_names = [name.decode() for name in sensor_names]
     sensor_lat: tb.Array = h5_input.get_node(info_group, 'sensor_latitudes')
     sensor_lon: tb.Array = h5_input.get_node(info_group, 'sensor_longitudes')
-    sensor_means = [369.5834609830342,371.67680280876823,370.76669098489083,374.4298641209037,376.3284942856716,375.61977942496674,370.2512986951063,371.36847690730417,377.2113228530946,370.58987227704154,374.5228818471059,375.17179612957113,376.5765075185596,371.38645481246544,375.34323650530564,374.9008210106542,371.6109395573938]
-    sensor_stdevs = [347.8603522253601,351.3471034733037,348.7762834269417,355.133494051483,355.93551735948995,357.2219486117755,349.58499017577765,351.748549155852,363.10020704222654,350.4837024103112,354.85642801401656,354.72589053441334,356.31119569112786,351.57445886922625,363.0534413979577,353.1444320719626,351.12601315651744]
     # Prepare training data
-    start_dt = datetime.datetime(2010, 3, 1)
-    stop_dt = datetime.datetime(2010, 3, 31)
+    start_dt = datetime.datetime(2010, 6, 1, 0, 0, 0)
+    stop_dt = datetime.datetime(2010, 6, 28, 0, 0, 0)
     generate_h5_file(data_center_name, farm_name, sensor_names, sensor_lat, sensor_lon, start_dt, stop_dt, 60, 'oahu.h5', 'training-input.h5')
     h5_input.close()
     # Train the model:
+    tic = time.time() 
     models_folder=f'data/output/{data_center_name}/{farm_name}/models'
     os.makedirs(models_folder, exist_ok=True)
     trainer = Trainer(input_path=f'data/output/{data_center_name}/{farm_name}/training-input.h5', 
@@ -121,10 +125,12 @@ if __name__ == "__main__":
                       models_folder=models_folder, 
                       server=farm_name,
                       kind='10x10', offset=0.001, scaling='stand', interp='nearest', 
-                      n_x=10, forecast_horizon=[1, 11, 31, 61], first_hour = '07:30:00', last_hour='17:30:00',
-                      mod_name = 'stand_map10_ts10_convLstm0_', testing = False)
-    trainer.train(datetime.datetime(2010, 3, 20),datetime.datetime(2010, 3, 22))
+                      n_x=10, forecast_horizon=[1, 11, 31, 61], first_hour = '06:30:00', last_hour='16:30:00',
+                      mod_name = 'stand_map10_ts10_convLstm0_25days', testing = False)
+    trainer.train(start_dt + datetime.timedelta(days=1), stop_dt-datetime.timedelta(days=1, seconds=1))
+    print('Training successful! it took {} in total'.format(time.strftime('%H:%M:%S', time.gmtime(time.time() - tic))))
 """
+    Last 5 days: 00:01:12
     h5_filepath = 'data/output/DataCenter/Oahu/oahu_tmp.h5'
     models_folder = 'data/output'
     beg_date = '2010/03/22'

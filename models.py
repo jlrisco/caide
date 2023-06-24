@@ -67,11 +67,8 @@ class SeveralFarms(Coupled):
             sensor_names = [name.decode() for name in sensor_names]
             sensor_latitudes: tb.Array = self.h5s[farm_name].get_node(info_group, 'sensor_latitudes')
             sensor_longitudes: tb.Array = self.h5s[farm_name].get_node(info_group, 'sensor_longitudes')
-            # TODO: This should eventually be computed at simulation time:
-            sensor_means = [369.5834609830342,371.67680280876823,370.76669098489083,374.4298641209037,376.3284942856716,375.61977942496674,370.2512986951063,371.36847690730417,377.2113228530946,370.58987227704154,374.5228818471059,375.17179612957113,376.5765075185596,371.38645481246544,375.34323650530564,374.9008210106542,371.6109395573938]
-            sensor_stdevs = [347.8603522253601,351.3471034733037,348.7762834269417,355.133494051483,355.93551735948995,357.2219486117755,349.58499017577765,351.748549155852,363.10020704222654,350.4837024103112,354.85642801401656,354.72589053441334,356.31119569112786,351.57445886922625,363.0534413979577,353.1444320719626,351.12601315651744]
             # Main fog server
-            farm = FarmServer(farm_name, sensor_names, sensor_latitudes, sensor_longitudes, sensor_means, sensor_stdevs, root_data_folder)
+            farm = FarmServer(farm_name, sensor_names, sensor_latitudes, sensor_longitudes, root_data_folder)
             self.add_component(farm)
             self.add_coupling(generator.o_cmd, farm.iport_cmd)
             # Sensors
