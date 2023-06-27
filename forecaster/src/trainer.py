@@ -194,7 +194,7 @@ class Trainer():
                                              log_file=log_file,
                                              )],
                   use_multiprocessing=True, workers=0)
-        model.save(os.path.join(self.models_folder, self.mod_name + '_updated({:02}-{:02}-{:02}).h5'.format(end_date.year,end_date.month,end_date.day)))
+        model.save(os.path.join(self.models_folder, self.mod_name + '.h5'))
 
 
 if __name__ == "__main__":

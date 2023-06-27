@@ -1,6 +1,7 @@
 import os
 import random
 import tables as tb
+import time
 from xdevs.models import Coupled
 from xdevs.sim import Coordinator
 from xdevs import INFINITY
@@ -86,9 +87,11 @@ class SeveralFarms(Coupled):
 
 if __name__ == "__main__":
     # Initialize the seed of random number generator:
+    tic = time.time() 
     random.seed(1975)    
     coupled = SeveralFarms("two-farms.txt", ["Oahu", "Almeria"])
     coord = Coordinator(coupled)
     coord.initialize()
     coord.simulate_time(INFINITY)
     coord.exit()
+    print('Simulation successful! it took {} in total'.format(time.strftime('%H:%M:%S', time.gmtime(time.time() - tic))))

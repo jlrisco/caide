@@ -112,7 +112,7 @@ if __name__ == "__main__":
     sensor_lat: tb.Array = h5_input.get_node(info_group, 'sensor_latitudes')
     sensor_lon: tb.Array = h5_input.get_node(info_group, 'sensor_longitudes')
     # Prepare training data
-    start_dt = datetime.datetime(2010, 6, 1, 0, 0, 0)
+    start_dt = datetime.datetime(2010, 6, 21, 0, 0, 0)
     stop_dt = datetime.datetime(2010, 6, 28, 0, 0, 0)
     generate_h5_file(data_center_name, farm_name, sensor_names, sensor_lat, sensor_lon, start_dt, stop_dt, 60, 'oahu.h5', 'training-input.h5')
     h5_input.close()

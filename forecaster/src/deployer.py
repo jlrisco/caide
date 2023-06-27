@@ -38,7 +38,7 @@ class Deployer():
     def __init__(self, models_folder, input_path, output_path, time_gran='01m', #dset='stand_map10',
                  server='FogServer01', kind='10x10', offset=0.001, scaling='stand', interp='nearest', 
                  n_x=10, forecast_horizon=[1, 11, 31, 61], first_hour = '07:30:00', last_hour='17:30:00',
-                 mod_name = 'stand_map10_ts10_convLstm0', testing = False                
+                 mod_name = 'model', testing = False                
                 ):
         # For files and paths
         self.models_folder = models_folder
