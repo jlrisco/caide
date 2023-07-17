@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
+import paramiko
 import plotly.express as px
 import seaborn as sns
 import tables as tb
@@ -87,8 +88,12 @@ class FarmServer(Atomic):
                 logger.info(f"Fog server received command to train the model with arguments: {cmd.args[0:-1]} ...")
                 start_dt: datetime = datetime.datetime.strptime(cmd.args[2], "%Y-%m-%d %H:%M:%S")
                 stop_dt: datetime = datetime.datetime.strptime(cmd.args[3], "%Y-%m-%d %H:%M:%S")
-                self.prepare_training(cmd.args[0], cmd.args[1], start_dt, stop_dt, f'{cmd.args[4]}.h5')
-                self.run_training(cmd.args[0], cmd.args[1], start_dt, stop_dt, f'{cmd.args[4]}.h5', cmd.args[5])
+                host = cmd.args[6]
+                if host == 'localhost':
+                    self.prepare_training(cmd.args[0], cmd.args[1], start_dt, stop_dt, f'{cmd.args[4]}.h5')
+                    self.run_training(cmd.args[0], cmd.args[1], start_dt, stop_dt, f'{cmd.args[4]}.h5', cmd.args[5])
+                else:
+                    self.remote_training(cmd.args[0], cmd.args[1], start_dt, stop_dt, cmd.args[4], cmd.args[5], cmd.args[6], cmd.args[7], cmd.args[8])
                 self.passivate(CommandEventId.CMD_TRAIN_MODEL.value)
             if cmd.cmd == CommandEventId.CMD_RUN_PREDICTION and cmd.args[0] == self.parent.name and cmd.args[1] == self.name:
                 logger.info(f"Fog server received command to generate prediction with arguments: {cmd.args[0:-1]} ...")
@@ -284,7 +289,7 @@ class FarmServer(Atomic):
         h5_input.close()
         h5_output.close()
 
-    def run_training(self, data_center_name: str, farm_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, input_filename: str, output_filename: str):
+    def run_training(self, data_center_name: str, farm_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, input_filename: str, model_name: str):
         models_folder=f'{self.root_data_folder}/output/{data_center_name}/{farm_name}/models'
         os.makedirs(models_folder, exist_ok=True)
         trainer = Trainer(input_path=f'{self.root_data_folder}/output/{data_center_name}/{farm_name}/training-input.h5', 
@@ -293,9 +298,16 @@ class FarmServer(Atomic):
                         server=farm_name,
                         kind='10x10', offset=0.001, scaling='stand', interp='nearest', 
                         n_x=10, forecast_horizon=[1, 11, 31, 61], first_hour = '05:00:00', last_hour='20:00:00',
-                        mod_name = output_filename, testing = False)
+                        mod_name = model_name, testing = False)
         trainer.train(start_dt, stop_dt)
 
+    def remote_training(self, data_center_name: str, farm_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, input_filename: str, model_name: str, host: str, username: str, key_path: str):
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(host, username=username, key_filename=key_path)
+        command = f'nohup python /git/caide/main_trainer.py --data_center_name={data_center_name} --farm_name={farm_name} --start_dt={start_dt} --stop_dt={stop_dt} --db_name={input_filename} --model_name={model_name} --host={host} --username={username} --key_path={key_path} > main_trainer.log 2>&1 &'
+        ssh.exec_command(command)
+        ssh.close()
 
     def fix_outliers(self, data_center_name: str, farm_name: str, sensor_name: str, start_dt: datetime.datetime, stop_dt: datetime.datetime, method: str, input_output_filename: str):
         logger.info("Reading H5 data ...")

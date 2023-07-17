@@ -1,0 +1,9 @@
+* CAIDE
+
+*Nota importante:* Cuando instales las dependencias, tendrás seguramente que actualizar matplotlib o de lo contrario prophet 
+no te funcionará cuando detectes outliers:
+
+#+BEGIN_SRC sh
+pip3 install -U matplotlib
+#+END_SRC
+
