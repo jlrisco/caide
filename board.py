@@ -29,9 +29,26 @@ h5file.create_array(farm_group, 'sensor_longitudes', np.array(sensor_longitudes)
 h5file.close()
 
 # Let's read some rows from the H5 file
+# Oahu
+h5file = tb.open_file('data/input/Oahu/sensors_data.h5', mode='r')
+table = h5file.get_node('/data', 'ap1')
+row = table[0]
+print(datetime.datetime.fromtimestamp(row[0]))
+row = table[1]
+print(datetime.datetime.fromtimestamp(row[0]))
+row = table[2]
+print(datetime.datetime.fromtimestamp(row[0]))
+row = table[-1]
+print(datetime.datetime.fromtimestamp(row[0]))
+h5file.close()
+
 h5file = tb.open_file('data/input/Almeria/sensors_data.h5', mode='r')
 table = h5file.get_node('/data', 'sensor1')
 row = table[0]
+print(datetime.datetime.fromtimestamp(row[0]))
+row = table[1]
+print(datetime.datetime.fromtimestamp(row[0]))
+row = table[2]
 print(datetime.datetime.fromtimestamp(row[0]))
 row = table[-1]
 print(datetime.datetime.fromtimestamp(row[0]))
