@@ -11,11 +11,22 @@ from xdevs.sim import Coordinator
 if __name__ == "__main__":
     # Get the arguments:
     parser = argparse.ArgumentParser()
+    """
     parser.add_argument("--data_center_name", type=str, default="DataCenter")
     parser.add_argument("--farm_name", type=str, default="Oahu")
     parser.add_argument("--start_dt", type=str, default="2010-06-02 00:00:00")
     parser.add_argument("--stop_dt", type=str, default="2010-06-26 23:59:59")
     parser.add_argument("--db_name", type=str, default="oahu")
+    parser.add_argument("--model_name", type=str, default="model")
+    parser.add_argument("--host", type=str, default="localhost")
+    parser.add_argument("--username", type=str, default="your_username")
+    parser.add_argument("--key_path", type=str, default="your_private_key_path")
+    """
+    parser.add_argument("--data_center_name", type=str, default="DataCenter")
+    parser.add_argument("--farm_name", type=str, default="Almeria")
+    parser.add_argument("--start_dt", type=str, default="2020-03-02 00:00:00")
+    parser.add_argument("--stop_dt", type=str, default="2020-03-26 23:59:59")
+    parser.add_argument("--db_name", type=str, default="almeria")
     parser.add_argument("--model_name", type=str, default="model")
     parser.add_argument("--host", type=str, default="localhost")
     parser.add_argument("--username", type=str, default="your_username")
